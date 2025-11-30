@@ -1,56 +1,38 @@
 (function() {
-    // 1. Target tabel spesifik berdasarkan ID dari source code
+    // 1. Cari elemen tabel target berdasarkan ID
     const table = document.querySelector('#tbllelang');
 
+    // Jika tabel belum ter-load (misal user menekan tombol terlalu cepat), hentikan proses
     if (!table) {
-        alert('Tabel #tbllelang tidak ditemukan! Pastikan kamu berada di halaman cari paket LPSE.');
+        alert('[LPSE Scraper] Tabel data tidak ditemukan. Pastikan halaman sudah memuat daftar lelang.');
         return;
     }
 
-    let csvContent = "Kode;Nama Paket;Instansi;Tahapan;HPS;Jadwal\n";
-    let count = 0;
-
-    // 2. Ambil semua baris di tbody
-    // Kita abaikan thead karena kita sudah hardcode header di atas
+    // 2. Ambil semua baris (tr) di dalam body tabel
     const rows = table.querySelectorAll('tbody tr');
+    const dataList = [];
 
-    rows.forEach(row => {
-        const cols = row.querySelectorAll('td');
-        
-        // Pastikan baris memiliki data (bukan baris "No data available")
-        if (cols.length > 1) {
-            // Mapping kolom berdasarkan struktur thead HTML:
-            // Index 0: Kode
-            // Index 1: Nama Paket (Seringkali HTML kompleks)
-            // Index 2: Instansi
-            // Index 3: Tahapan
-            // Index 4: HPS
-            // Index 5: Jadwal Pengumuman
+    // 3. Iterasi setiap baris
+    rows.forEach((row, index) => {
+        // Panggil Interface (LpseInterface) yang ada di processor.js
+        // Kita mengirim elemen raw 'row' agar diolah oleh Interface
+        const rowData = LpseInterface.getRawData(row);
 
-            const kode = cleanText(cols[0]?.innerText);
-            const namaPaket = cleanText(cols[1]?.innerText); 
-            const instansi = cleanText(cols[2]?.innerText);
-            const tahapan = cleanText(cols[3]?.innerText);
-            const hps = cleanText(cols[4]?.innerText);
-            const jadwal = cleanText(cols[5]?.innerText);
-
-            // Gabungkan dengan delimiter (titik koma agar aman jika ada koma di angka uang)
-            csvContent += `${kode};"${namaPaket}";"${instansi}";"${tahapan}";"${hps}";"${jadwal}"\n`;
-            count++;
+        // Jika data valid (bukan null), masukkan ke list
+        if (rowData) {
+            dataList.push(rowData);
         }
     });
 
-    // Fungsi helper untuk membersihkan teks dari enter/tab berlebih
-    function cleanText(text) {
-        if (!text) return "";
-        return text.replace(/[\r\n]+/g, " ").trim();
-    }
+    // 4. Ubah List Object menjadi string CSV menggunakan Interface
+    const csvOutput = LpseInterface.toCSV(dataList);
 
-    // 3. Kirim data kembali ke Popup
+    // 5. Kirim data matang ke Popup (popup.js)
     chrome.runtime.sendMessage({
         action: "data_scraped",
-        data: csvContent,
-        count: count
+        data: csvOutput,
+        count: dataList.length
     });
 
+    console.log(`[LPSE Scraper] Selesai. ${dataList.length} data berhasil diambil.`);
 })();

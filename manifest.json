@@ -2,10 +2,14 @@
   "manifest_version": 3,
   "name": "LPSE Table Scraper",
   "version": "1.0",
-  "description": "Scrape data lelang LPSE dari tabel DataTables",
-  "permissions": ["activeTab", "scripting"],
+  "description": "Ekstensi untuk scraping tabel data lelang LPSE",
+  "permissions": [
+    "activeTab",
+    "scripting"
+  ],
   "action": {
     "default_popup": "popup.html",
+    "default_title": "Scrape LPSE",
     "default_icon": {
       "16": "icon.png",
       "48": "icon.png",
