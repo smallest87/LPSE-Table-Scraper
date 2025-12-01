@@ -94,7 +94,7 @@ function findMatch(text, list) {
     return matches[0]; 
 }
 
-class PackageParser {
+class NamaPaketParser {
     static parse(tdElement) {
         const paragraphs = tdElement.querySelectorAll('p');
         
@@ -187,13 +187,103 @@ class PackageParser {
     }
 }
 
-class LpseInterface {
+/**
+ * Parser Khusus untuk struktur Pencatatan (Non Tender/Swakelola/Darurat)
+ * Struktur HTML: <td> <a>Nama</a> <badge> <badge> <p>Meta</p> </td>
+ */
+class PencatatanParser {
+    static parse(tdElement) {
+        let result = {
+            nama_paket: "",
+            versi_spse: "",
+            jenis_pekerjaan: "",
+            tahun_anggaran: "",
+            metode_pengadaan: [],
+            keterangan_lain: ""
+        };
+
+        // 1. Ekstraksi Nama Paket
+        // Pada pencatatan, Nama Paket ada di tag <a> langsung (child dari td), bukan di dalam <p>
+        const anchor = tdElement.querySelector('a');
+        if (anchor) {
+            result.nama_paket = anchor.innerText.trim();
+        }
+
+        // 2. Kumpulkan Kandidat Teks untuk Filter
+        let candidates = [];
+
+        // A. Ambil dari Badge (biasanya Versi SPSE & Metode seperti "Pengadaan Langsung")
+        const badges = tdElement.querySelectorAll('.badge');
+        badges.forEach(b => candidates.push(b.innerText.trim()));
+
+        // B. Ambil dari Paragraf Metadata (biasanya "Jasa Lainnya - TA 2025")
+        const paragraphs = tdElement.querySelectorAll('p');
+        paragraphs.forEach(p => {
+            // Split berdasarkan " - "
+            const parts = p.innerText.split(' - ');
+            parts.forEach(part => candidates.push(part.trim()));
+        });
+
+        // 3. Filter Candidates menggunakan MASTER_DATA
+        let unknownParts = [];
+
+        candidates.forEach(text => {
+            let isIdentified = false;
+
+            // Cek Versi SPSE
+            const versi = findMatch(text, MASTER_DATA.VERSI_SPSE);
+            if (versi) {
+                result.versi_spse = versi;
+                isIdentified = true;
+            }
+
+            // Cek Tahun Anggaran
+            const tahun = findMatch(text, MASTER_DATA.TAHUN_ANGGARAN);
+            if (tahun && !isIdentified) {
+                result.tahun_anggaran = tahun;
+                isIdentified = true;
+            }
+
+            // Cek Jenis Pengadaan
+            const jenis = findMatch(text, MASTER_DATA.JENIS_PENGADAAN);
+            if (jenis && !isIdentified) {
+                result.jenis_pekerjaan = jenis;
+                isIdentified = true;
+            }
+
+            // Cek Metode/Sistem
+            const metode = findMatch(text, MASTER_DATA.METODE_DAN_SISTEM);
+            if (metode && !isIdentified) {
+                // Hindari duplikasi jika metode yang sama muncul di badge DAN paragraph
+                if (!result.metode_pengadaan.includes(metode)) {
+                    result.metode_pengadaan.push(metode);
+                }
+                isIdentified = true;
+            }
+
+            if (!isIdentified) {
+                unknownParts.push(text);
+            }
+        });
+
+        // Format hasil akhir
+        result.metode_pengadaan = result.metode_pengadaan.join(", ");
+        result.keterangan_lain = unknownParts.join(" - ");
+        
+        // Pencatatan biasanya tidak menampilkan "Nilai Kontrak" di kolom Nama Paket
+        // Tapi jika ada polanya nanti, bisa ditambahkan disini.
+
+        return result;
+    }
+}
+
+class LelangInterface {
     static getRawData(rowElement) {
         const cols = rowElement.querySelectorAll('td');
         if (cols.length < 5) return null;
 
         // Parsing kolom nama paket
-        const details = PackageParser.parse(cols[1]);
+        const details = NamaPaketParser.parse(cols[1]);
 
         return {
             kode: cols[0].innerText.trim(),
@@ -201,6 +291,79 @@ class LpseInterface {
             instansi: cols[2].innerText.trim(),
             tahapan: cols[3].innerText.trim(),
             hps: cols[4].innerText.trim()
+        };
+    }
+}
+
+class NonTenderInterface {
+    static getRawData(rowElement) {
+        const cols = rowElement.querySelectorAll('td');
+        if (cols.length < 5) return null;
+
+        // Parsing kolom nama paket
+        const details = NamaPaketParser.parse(cols[1]);
+
+        return {
+            kode: cols[0].innerText.trim(),
+            ...details,
+            instansi: cols[2].innerText.trim(),
+            tahapan: cols[3].innerText.trim(),
+            hps: cols[4].innerText.trim()
+        };
+    }
+}
+
+class PencatatanNonTenderInterface {
+    static getRawData(rowElement) {
+        const cols = rowElement.querySelectorAll('td');
+        // Pencatatan biasanya minimal 5 kolom
+        if (cols.length < 5) return null;
+
+        // PENGGUNAAN PARSER BARU
+        const details = PencatatanParser.parse(cols[1]);
+
+        return {
+            kode: cols[0].innerText.trim(),     // Kolom 0: Kode
+            ...details,                          // Kolom 1: Nama Paket (Parsed)
+            instansi: cols[2].innerText.trim(),  // Kolom 2: Instansi
+            tahapan: cols[3].innerText.trim(),   // Kolom 3: Status (User Info: Status)
+            hps: cols[4].innerText.trim()        // Kolom 4: Pagu (User Info: Pagu)
+        };
+    }
+}
+
+class PencatatanSwakelolaInterface {
+    static getRawData(rowElement) {
+        const cols = rowElement.querySelectorAll('td');
+        if (cols.length < 5) return null;
+
+        // Parsing kolom nama paket
+        const details = NamaPaketParser.parse(cols[1]);
+
+        return {
+            kode_paket: cols[0].innerText.trim(),
+            ...details,
+            instansi: cols[2].innerText.trim(),
+            status: cols[3].innerText.trim(),
+            pagu: cols[4].innerText.trim()
+        };
+    }
+}
+
+class PencatatanPengadaanDaruratInterface {
+    static getRawData(rowElement) {
+        const cols = rowElement.querySelectorAll('td');
+        if (cols.length < 5) return null;
+
+        // Parsing kolom nama paket
+        const details = NamaPaketParser.parse(cols[1]);
+
+        return {
+            kode_paket: cols[0].innerText.trim(),
+            ...details,
+            instansi: cols[2].innerText.trim(),
+            status: cols[3].innerText.trim(),
+            pagu: cols[4].innerText.trim()
         };
     }
 }
