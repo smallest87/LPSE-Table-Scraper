@@ -1,21 +1,10 @@
 if (typeof LpseRepository === 'undefined') {
     window.LpseRepository = class LpseRepository {
-        /**
-         * Konversi Array Object ke format CSV string
-         */
         static toCSV(dataArray) {
             const header = [
-                "Kode", 
-                "Nama Paket", 
-                "Versi SPSE", 
-                "Jenis Pekerjaan", 
-                "Tahun Anggaran", 
-                "Jenis Kontrak", 
-                "Sistem Kontrak", 
-                "Nilai Kontrak", 
-                "Instansi", 
-                "Tahapan", 
-                "HPS"
+                "Kode", "Nama Paket", "Versi SPSE", "Jenis Pekerjaan", 
+                "Tahun Anggaran", "Jenis Kontrak", "Sistem Kontrak", 
+                "Nilai Kontrak", "Instansi", "Tahapan", "HPS"
             ].join(";") + "\n";
             
             const body = dataArray.map(item => {
@@ -27,7 +16,8 @@ if (typeof LpseRepository === 'undefined') {
                     `"${(item.tahun_anggaran || "").replace(/"/g, '""')}"`,
                     `"${(item.jenis_kontrak || "").replace(/"/g, '""')}"`,
                     `"${(item.sistem_kontrak || "").replace(/"/g, '""')}"`,
-                    `"${(item.nilai_kontrak || "").replace(/"/g, '""')}"`,
+                    // HANDLING NULL: Jika null ganti string kosong, jika ada isi pakai isinya
+                    `"${(item.nilai_kontrak !== null ? item.nilai_kontrak : "")}"`,
                     `"${(item.instansi || "").replace(/"/g, '""')}"`,
                     `"${(item.tahapan || "").replace(/"/g, '""')}"`,
                     `"${(item.hps || "").replace(/"/g, '""')}"`
@@ -37,9 +27,6 @@ if (typeof LpseRepository === 'undefined') {
             return header + body;
         }
     
-        /**
-         * Konversi Array Object ke format JSON string
-         */
         static toJSON(dataArray) {
             return JSON.stringify(dataArray, null, 4);
         }

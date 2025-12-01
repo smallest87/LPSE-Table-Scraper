@@ -1,3 +1,4 @@
+// Variabel Global
 let scrapedData = [];
 let sourceName = "LPSE";
 
@@ -9,8 +10,8 @@ document.getElementById('btnScrape').addEventListener('click', async () => {
 
     chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        // PERHATIKAN URUTAN: repository -> formatter -> processor -> content
-        files: ['repository.js', 'formatter.js', 'processor.js', 'content.js']
+        // URUTAN KRUSIAL: formatter -> processor -> content
+        files: ['formatter.js', 'processor.js', 'content.js']
     }, () => {
         if (chrome.runtime.lastError) {
             updateStatus("Error: " + chrome.runtime.lastError.message);
@@ -22,11 +23,15 @@ chrome.runtime.onMessage.addListener((request) => {
     if (request.action === "data_scraped") {
         scrapedData = request.items;
         sourceName = request.source || "LPSE";
+        
         renderTable(scrapedData);
+        
         updateStatus(`Berhasil mengambil ${request.count} data dari tab "${sourceName}".`);
         document.getElementById('downloadArea').style.display = 'flex';
     }
 });
+
+// --- TOMBOL DOWNLOAD ---
 
 document.getElementById('btnDownloadCsv').addEventListener('click', () => {
     if (scrapedData.length === 0) return;
@@ -41,6 +46,8 @@ document.getElementById('btnDownloadJson').addEventListener('click', () => {
     const filename = `Data_${sourceName}_${getTimestamp()}.json`;
     downloadFile(jsonContent, filename, 'application/json');
 });
+
+// --- HELPER ---
 
 function downloadFile(content, filename, mimeType) {
     const blob = new Blob([content], { type: mimeType });
@@ -65,8 +72,10 @@ function updateStatus(msg) {
 function renderTable(items) {
     const tbody = document.getElementById('tableBody');
     const theadRow = document.getElementById('tableHeader');
+    
     tbody.innerHTML = '';
     theadRow.innerHTML = '';
+
     if (items.length === 0) return;
 
     const headers = Object.keys(items[0]);
@@ -80,7 +89,19 @@ function renderTable(items) {
         const tr = document.createElement('tr');
         headers.forEach(key => {
             const td = document.createElement('td');
-            td.innerText = item[key];
+            
+            let displayValue = item[key];
+            
+            // HANDLING NULL UNTUK TAMPILAN TABEL
+            if (key === 'nilai_kontrak' && displayValue === null) {
+                displayValue = "Nilai Kontrak belum dibuat";
+                td.style.color = "#999"; 
+                td.style.fontStyle = "italic";
+            } else if (displayValue === null) {
+                displayValue = "-";
+            }
+
+            td.innerText = displayValue;
             tr.appendChild(td);
         });
         tbody.appendChild(tr);

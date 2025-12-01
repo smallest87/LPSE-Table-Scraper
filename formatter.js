@@ -1,16 +1,14 @@
 if (typeof DataFormatter === 'undefined') {
     window.DataFormatter = class DataFormatter {
         /**
-         * Mengubah format mata uang singkat (Indo) menjadi Angka Murni (Number)
+         * Mengubah format mata uang (HPS/Pagu) menjadi Angka Murni.
          */
         static parseHPS(value) {
             if (!value) return 0;
     
-            // 1. Normalisasi: Lowercase & Trim
             let str = value.toString().toLowerCase().trim();
             let multiplier = 1;
     
-            // 2. Deteksi Suffix
             if (str.includes(" t ") || str.endsWith("t") || str.includes("triliun")) {
                 multiplier = 1000000000000;
             } else if (str.includes(" m ") || str.endsWith("m") || str.includes("miliar")) {
@@ -19,20 +17,36 @@ if (typeof DataFormatter === 'undefined') {
                 multiplier = 1000000;
             }
     
-            // 3. Pembersihan Karakter (Hanya angka, koma, titik)
+            // Hapus karakter non-angka/koma/titik
             let cleanNum = str.replace(/[^0-9,.]/g, "");
     
-            // 4. Konversi String ke Float
             if (multiplier > 1) {
-                // Format singkatan (2,6 M) -> Koma adalah desimal JS
+                // Singkatan (2,6 M) -> Koma adalah desimal
                 cleanNum = cleanNum.replace(/\./g, "").replace(",", ".");
             } else {
-                // Format lengkap (Rp 1.000,00) -> Titik hapus, Koma jadi titik
+                // Lengkap (Rp 1.000,00) -> Titik hapus, Koma jadi titik
                 cleanNum = cleanNum.replace(/\./g, "").replace(",", ".");
             }
     
-            // 5. Kalkulasi Akhir
             return Math.round(parseFloat(cleanNum) * multiplier);
+        }
+
+        /**
+         * LOGIKA: 
+         * - Jika ada angka -> Return Integer
+         * - Jika teks huruf saja -> Return null
+         */
+        static parseNilaiKontrak(value) {
+            if (!value) return null;
+
+            // Cek apakah ada digit (0-9) dalam string
+            const hasDigit = /\d/.test(value);
+
+            if (hasDigit) {
+                return this.parseHPS(value);
+            } else {
+                return null; // Return NULL agar JSON bersih
+            }
         }
     }
 }

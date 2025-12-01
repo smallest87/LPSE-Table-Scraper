@@ -1,4 +1,4 @@
-// Cek apakah MASTER_DATA sudah ada. Gunakan VAR agar global dan bisa di-hoist.
+// --- MASTER DATA ---
 if (typeof MASTER_DATA === 'undefined') {
     var MASTER_DATA = {
         VERSI_SPSE: ["spse 3", "spse 4.5", "spse 4.4", "spse 4.3", "spse 5.0"],
@@ -21,7 +21,7 @@ if (typeof MASTER_DATA === 'undefined') {
     };
 }
 
-// Helper Function
+// --- HELPER ---
 if (typeof findMatch === 'undefined') {
     window.findMatch = function(text, list) {
         if (!text) return null;
@@ -39,10 +39,11 @@ if (typeof NamaPaketParser === 'undefined') {
     window.NamaPaketParser = class NamaPaketParser {
         static parse(tdElement) {
             const paragraphs = tdElement.querySelectorAll('p');
-            let result = { nama_paket: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: "0", keterangan_lain: "" };
+            let result = { nama_paket: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: null, keterangan_lain: "" };
 
             if (paragraphs.length === 0) return result;
 
+            // 1. Nama Paket
             const p1 = paragraphs[0];
             const anchor = p1.querySelector('a');
             if (anchor) {
@@ -51,6 +52,7 @@ if (typeof NamaPaketParser === 'undefined') {
                 result.nama_paket = tempAnchor.innerText.trim();
             }
 
+            // 2. Kandidat Teks
             let candidates = [];
             p1.querySelectorAll('.badge').forEach(b => candidates.push(b.innerText.trim()));
             if (paragraphs[1]) {
@@ -58,6 +60,7 @@ if (typeof NamaPaketParser === 'undefined') {
                 candidates = candidates.concat(metaParts);
             }
 
+            // 3. Filter
             let unknownParts = [];
             candidates.forEach(text => {
                 let isIdentified = false;
@@ -71,7 +74,12 @@ if (typeof NamaPaketParser === 'undefined') {
 
             result.metode_pengadaan = result.metode_pengadaan.join(", ");
             result.keterangan_lain = unknownParts.join(" - ");
-            if (paragraphs[2]) result.nilai_kontrak = paragraphs[2].innerText.replace(/Nilai Kontrak\s*:/i, "").trim();
+
+            // 4. Nilai Kontrak (Processing Langsung disini)
+            if (paragraphs[2]) {
+                const rawNilai = paragraphs[2].innerText.replace(/Nilai Kontrak\s*:/i, "").trim();
+                result.nilai_kontrak = DataFormatter.parseNilaiKontrak(rawNilai);
+            }
 
             return result;
         }
@@ -81,7 +89,7 @@ if (typeof NamaPaketParser === 'undefined') {
 if (typeof PencatatanParser === 'undefined') {
     window.PencatatanParser = class PencatatanParser {
         static parse(tdElement) {
-            let result = { nama_paket: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], keterangan_lain: "" };
+            let result = { nama_paket: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: null, keterangan_lain: "" };
             
             const anchor = tdElement.querySelector('a');
             if (anchor) result.nama_paket = anchor.innerText.trim();
@@ -90,9 +98,9 @@ if (typeof PencatatanParser === 'undefined') {
             tdElement.querySelectorAll('.badge').forEach(b => candidates.push(b.innerText.trim()));
             tdElement.querySelectorAll('p').forEach(p => {
                 const rawText = p.innerText;
-                rawText.split(' - ').forEach(part => candidates.push(part.trim()));
                 const normalized = rawText.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-                candidates.push(normalized);
+                rawText.split(' - ').forEach(part => candidates.push(part.trim())); // Split original
+                candidates.push(normalized); // Normalized
             });
 
             let unknownParts = [];
@@ -108,7 +116,6 @@ if (typeof PencatatanParser === 'undefined') {
                         isIdentified = true;
                     }
                 }
-
                 if (!isIdentified && text.length > 2 && !text.includes('TA 20')) unknownParts.push(text);
             });
 
@@ -119,7 +126,7 @@ if (typeof PencatatanParser === 'undefined') {
     }
 }
 
-// --- INTERFACES (Registered to Window) ---
+// --- INTERFACES ---
 
 if (typeof LelangInterface === 'undefined') {
     window.LelangInterface = class LelangInterface {
