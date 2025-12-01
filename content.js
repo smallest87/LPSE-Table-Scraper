@@ -1,96 +1,58 @@
 (function() {
-    // 1. DETEKSI TAB AKTIF
-    const activeTabEl = document.querySelector('ul#tabs li.nav-item a.active');
-    
-    if (!activeTabEl) {
-        alert('[LPSE Scraper] Gagal mendeteksi tab menu yang aktif. Pastikan halaman sudah dimuat sempurna.');
-        return;
-    }
+    // 1. DETEKSI MODE HALAMAN
+    const listTabEl = document.querySelector('ul#tabs li.nav-item a.active');
+    const detailTableEl = document.querySelector('.content .table, .content-detail .table');
 
-    const activeTabName = activeTabEl.innerText.trim();
-    console.log(`[LPSE Scraper] Tab Aktif Terdeteksi: "${activeTabName}"`);
-
-    // 2. DEFINISI SKENARIO
-    // Menggunakan multiple selector (koma) untuk fallback ID tabel
-    let currentScenario = null;
-
-    switch (activeTabName) {
-        case 'Tender':
-            currentScenario = {
-                tableSelector: '#tabellelang, #tbllelang', 
-                interface: LelangInterface 
-            };
-            break;
-
-        case 'Non Tender':
-            currentScenario = {
-                tableSelector: '#tabellelang, #tblnontender, #tbllelang',
-                interface: NonTenderInterface 
-            };
-            break;
-
-        case 'Pencatatan Non Tender':
-            currentScenario = {
-                tableSelector: '#tabellelang, #tblpencatatan, #tbllelang',
-                interface: PencatatanNonTenderInterface 
-            };
-            break;
-
-        case 'Pencatatan Swakelola':
-            currentScenario = {
-                tableSelector: '#tblswakelola',
-                interface: PencatatanSwakelolaInterface 
-            };
-            break;
-
-        case 'Pencatatan Pengadaan Darurat':
-            currentScenario = {
-                tableSelector: '#tabellelang, #tbldarurat',
-                interface: PencatatanPengadaanDaruratInterface 
-            };
-            break;
-
-        default:
-            alert(`[LPSE Scraper] Jenis tab "${activeTabName}" belum didukung dalam skenario.`);
-            return;
-    }
-
-    // 3. AMBIL TABEL BERDASARKAN SKENARIO
-    const table = document.querySelector(currentScenario.tableSelector);
-
-    if (!table) {
-        alert(`[LPSE Scraper] Tabel dengan ID target tidak ditemukan pada tab "${activeTabName}".`);
-        return;
-    }
-
-    // 4. EKSEKUSI SCRAPING
-    const rows = table.querySelectorAll('tbody tr');
-    const dataList = [];
-
-    rows.forEach(row => {
-        const rowData = currentScenario.interface.getRawData(row);
-        if (rowData) {
-            rowData.sumber_data = activeTabName; 
-            dataList.push(rowData);
+    // --- MODE A: DAFTAR PAKET ---
+    if (listTabEl) {
+        const activeTabName = listTabEl.innerText.trim();
+        let currentScenario = null;
+        
+        switch (activeTabName) {
+            case 'Tender': currentScenario = { tableSelector: '#tabellelang, #tbllelang', interface: LelangInterface }; break;
+            case 'Non Tender': currentScenario = { tableSelector: '#tabellelang, #tblnontender, #tbllelang', interface: NonTenderInterface }; break;
+            case 'Pencatatan Non Tender': currentScenario = { tableSelector: '#tabellelang, #tblpencatatan', interface: PencatatanNonTenderInterface }; break;
+            case 'Pencatatan Swakelola': currentScenario = { tableSelector: '#tblswakelola', interface: PencatatanSwakelolaInterface }; break;
+            case 'Pencatatan Pengadaan Darurat': currentScenario = { tableSelector: '#tabellelang, #tbldarurat', interface: PencatatanPengadaanDaruratInterface }; break;
         }
-    });
 
-    // 5. KIRIM DATA KE POPUP
-    chrome.runtime.sendMessage({
-        action: "data_scraped",
-        items: dataList,
-        count: dataList.length,
-        source: activeTabName
-    });
+        if (currentScenario) {
+            const table = document.querySelector(currentScenario.tableSelector);
+            if (table) {
+                const rows = table.querySelectorAll('tbody tr');
+                const dataList = [];
+                rows.forEach(row => {
+                    const rowData = currentScenario.interface.getRawData(row);
+                    if (rowData) {
+                        rowData.sumber_data = activeTabName; 
+                        dataList.push(rowData);
+                    }
+                });
+                
+                chrome.runtime.sendMessage({
+                    action: "data_scraped", items: dataList, count: dataList.length, source: activeTabName, type: "list"
+                });
+            }
+        }
+        return; 
+    }
 
-    // --- FITUR BARU: LISTENER UNTUK BUKA LINK ---
-    // Mencegah duplicate listener jika script di-inject berkali-kali
+    // --- MODE B: DETAIL PAKET ---
+    else if (detailTableEl) {
+        const singleData = DetailPageInterface.getRawData(detailTableEl);
+        const dataList = [singleData];
+        
+        chrome.runtime.sendMessage({
+            action: "data_scraped", items: dataList, count: 1, source: "Detail Paket", type: "detail"
+        });
+        return;
+    }
+
+    // --- LISTENER BUKA LINK (Proxy Click) ---
     if (!window.hasLinkListener) {
         window.hasLinkListener = true;
-        
-        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        chrome.runtime.onMessage.addListener((request) => {
             if (request.action === "open_link_in_tab") {
-                // Membuka URL dari konteks halaman ini (Referrer aman)
                 window.open(request.url, '_blank');
             }
         });

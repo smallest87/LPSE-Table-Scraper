@@ -1,27 +1,24 @@
 if (typeof LpseRepository === 'undefined') {
     window.LpseRepository = class LpseRepository {
         static toCSV(dataArray) {
-            const header = [
-                "Kode", "Nama Paket", "Link Paket", "Versi SPSE", "Jenis Pekerjaan", 
-                "Tahun Anggaran", "Jenis Kontrak", "Sistem Kontrak", 
-                "Nilai Kontrak", "Instansi", "Tahapan", "HPS"
-            ].join(";") + "\n";
+            if (dataArray.length === 0) return "";
+
+            // AMBIL SEMUA KOLOM SECARA DINAMIS DARI DATA PERTAMA
+            const columns = Object.keys(dataArray[0]);
+
+            // Header
+            const header = columns.map(col => col.replace(/_/g, ' ').toUpperCase()).join(";") + "\n";
             
+            // Body
             const body = dataArray.map(item => {
-                return [
-                    `"${(item.kode || "").replace(/"/g, '""')}"`,
-                    `"${(item.nama_paket || "").replace(/"/g, '""')}"`,
-                    `"${(item.link_url || "").replace(/"/g, '""')}"`, // KOLOM BARU
-                    `"${(item.versi_spse || "").replace(/"/g, '""')}"`,
-                    `"${(item.jenis_pekerjaan || "").replace(/"/g, '""')}"`,
-                    `"${(item.tahun_anggaran || "").replace(/"/g, '""')}"`,
-                    `"${(item.jenis_kontrak || "").replace(/"/g, '""')}"`,
-                    `"${(item.sistem_kontrak || "").replace(/"/g, '""')}"`,
-                    `"${(item.nilai_kontrak !== null ? item.nilai_kontrak : "")}"`,
-                    `"${(item.instansi || "").replace(/"/g, '""')}"`,
-                    `"${(item.tahapan || "").replace(/"/g, '""')}"`,
-                    `"${(item.hps || "").replace(/"/g, '""')}"`
-                ].join(";");
+                return columns.map(col => {
+                    let val = item[col];
+                    // Handle null/undefined
+                    if (val === null || val === undefined) val = "";
+                    // Handle string yang butuh escape
+                    if (typeof val === 'string') val = val.replace(/"/g, '""');
+                    return `"${val}"`;
+                }).join(";");
             }).join("\n");
     
             return header + body;
