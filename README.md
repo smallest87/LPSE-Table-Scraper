@@ -31,3 +31,30 @@ Dibangun dengan **Manifest V3** dan menggunakan antarmuka **Side Panel** yang pe
 ├── repository.js       # Helper ekspor data (CSV/JSON)
 ├── background.js       # Service Worker
 └── icons/              # Folder ikon aplikasi
+
+## 🛠️ Cara Instalasi
+
+Karena ekstensi ini belum tersedia di Chrome Web Store, Anda perlu menginstalnya secara manual (Developer Mode).
+
+### Langkah 1: Unduh Kode
+1.  **Clone** repositori ini menggunakan Git:
+    ```bash
+    git clone [https://github.com/juliansukrisna/lpse-pro-scraper.git](https://github.com/juliansukrisna/lpse-pro-scraper.git)
+    ```
+    *Atau*
+2.  **Download ZIP** dari halaman GitHub ini, lalu ekstrak (unzip) ke sebuah folder di komputer Anda.
+
+### Langkah 2: Muat ke Chrome
+1.  Buka Google Chrome.
+2.  Ketik `chrome://extensions/` di address bar dan tekan Enter.
+3.  Aktifkan toogle **Developer mode** di pojok kanan atas halaman.
+4.  Klik tombol **Load unpacked** (Muat yang belum dikemas) di pojok kiri atas.
+5.  Pilih **folder** tempat Anda menyimpan/mengekstrak kode proyek ini.
+
+### Langkah 3: Sematkan (Penting!)
+Agar Side Panel mudah diakses:
+1.  Klik ikon **Puzzle (🧩)** di toolbar Chrome (sebelah kanan address bar).
+2.  Cari **"LPSE Pro Scraper"**.
+3.  Klik ikon **Pin (📌)** agar ikon ekstensi selalu muncul di toolbar.
+
+🎉 **Selesai!** Sekarang klik ikon ekstensi tersebut untuk membuka Side Panel.
