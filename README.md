@@ -31,6 +31,7 @@ Dibangun dengan **Manifest V3** dan menggunakan antarmuka **Side Panel** yang pe
 ├── repository.js       # Helper ekspor data (CSV/JSON)
 ├── background.js       # Service Worker
 └── icons/              # Folder ikon aplikasi
+```
 
 ## 🛠️ Cara Instalasi
 
