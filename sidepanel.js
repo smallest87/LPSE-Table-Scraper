@@ -1,4 +1,5 @@
 let currentData = [];
+let isBatchProcessing = false;
 
 // 1. INIT LOAD
 chrome.storage.local.get(['lpse_data'], (result) => {
@@ -17,111 +18,89 @@ document.getElementById('btnScrape').addEventListener('click', async () => {
     await injectAndScrape(tab.id);
 });
 
-// FUNGSI INJEKSI & SCRAPE (Bisa dipanggil manual atau otomatis)
-async function injectAndScrape(tabId) {
-    updateStatus("Mencoba mengambil data...");
+// 3. BATCH SCRAPE BUTTON
+document.getElementById('btnBatchScrape').addEventListener('click', async () => {
+    if (isBatchProcessing) { isBatchProcessing = false; updateStatus("Batch stop."); return; }
     
-    // Gunakan try-catch agar tidak memutus flow jika tab tertutup/error
+    const targets = currentData.filter(item => item.link_url && !item._hasDetail);
+    if (targets.length === 0) { updateStatus("Semua detail sudah lengkap!"); return; }
+    if (!confirm(`Proses ${targets.length} paket?`)) return;
+
+    isBatchProcessing = true;
+    document.getElementById('btnBatchScrape').innerText = "STOP";
+    document.getElementById('btnBatchScrape').style.backgroundColor = "#dc3545";
+
+    for (let i = 0; i < targets.length; i++) {
+        if (!isBatchProcessing) break;
+        const item = targets[i];
+        updateStatus(`[${i+1}/${targets.length}] ${item.kode}...`);
+        highlightRow(item.kode, '#fff3cd');
+
+        try {
+            const tab = await chrome.tabs.create({ url: item.link_url, active: true });
+            await new Promise(r => setTimeout(r, 2000)); // Tunggu load
+            await injectAndScrape(tab.id);
+            await new Promise(r => setTimeout(r, 1000)); // Tunggu scrape
+            await chrome.tabs.remove(tab.id);
+        } catch (e) { console.error(e); }
+    }
+
+    isBatchProcessing = false;
+    document.getElementById('btnBatchScrape').innerText = "SCRAPE SEMUA DETAIL";
+    document.getElementById('btnBatchScrape').style.backgroundColor = "#17a2b8";
+    updateStatus("Selesai.");
+});
+
+// FUNGSI INJEKSI
+async function injectAndScrape(tabId) {
+    updateStatus("Mengambil data...");
     try {
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
             files: ['formatter.js', 'processor.js', 'content.js']
         });
-    } catch (err) {
-        console.log("Inject error (mungkin tab tertutup/restricted):", err);
-        // Jangan updateStatus error ke UI agar tidak spamming saat user buka tab non-LPSE
-    }
+    } catch (err) { console.log("Inject error:", err); }
 }
 
-// 3. RECEIVE MESSAGE (Hasil Scrape)
+// RECEIVE MESSAGE
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "data_scraped") {
-        
-        // CASE A: LIST
         if (request.type === 'list' || request.count > 1) {
             currentData = request.items;
-            saveAndRender(`Daftar diperbarui: ${request.count} paket.`);
-        } 
-        
-        // CASE B: DETAIL (MERGING)
-        else if (request.type === 'detail' || request.count === 1) {
+            saveAndRender(`Daftar diperbarui: ${request.count} item.`);
+        } else if (request.type === 'detail' || request.count === 1) {
             const detail = request.items[0];
-            
-            // Logic Merging: Cari berdasarkan Kode
             const idx = currentData.findIndex(i => i.kode === detail.kode);
-            
             if (idx !== -1) {
-                // Update data lama dengan detail baru
                 currentData[idx] = { ...currentData[idx], ...detail };
-                currentData[idx]._hasDetail = true; // Flag visual
-                
-                saveAndRender(`Auto-Update: Detail Paket ${detail.kode} masuk!`);
-                
-                // Efek visual highlight pada baris tabel
+                currentData[idx]._hasDetail = true;
+                saveAndRender(`Update: ${detail.kode}`);
                 highlightRow(detail.kode);
-            } else {
-                updateStatus(`Info: Detail ${detail.kode} diambil (Data baru).`);
-                // Opsional: Jika ingin menambahkan data baru yg tidak ada di list
-                // currentData.push(detail); saveAndRender(...);
             }
         }
     }
 });
 
-// 4. AUTO-SCRAPE LISTENER (CCTV)
-// Memantau setiap tab yang selesai loading
+// AUTO SCRAPE LISTENER
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    // Hanya bereaksi jika status = complete (Halaman selesai loading)
+    if (isBatchProcessing) return; // Skip saat batch
     if (changeInfo.status === 'complete' && tab.url) {
-        
-        // Filter URL: Hanya jalankan di halaman yang terlihat seperti LPSE
-        // Keyword: lelang, nontender, pencatatan, pengumuman, detail, jadwal
         const keywords = ['lelang', 'nontender', 'pencatatan', 'swakelola', 'pengumuman', 'jadwal'];
-        const isTargetUrl = keywords.some(k => tab.url.toLowerCase().includes(k));
-
-        if (isTargetUrl) {
-            console.log("Auto-Scraping detected for:", tab.url);
-            updateStatus("Mendeteksi halaman LPSE, auto-scraping...");
+        if (keywords.some(k => tab.url.toLowerCase().includes(k))) {
             injectAndScrape(tabId);
         }
     }
 });
 
-
-// --- HELPERS ---
-
-function saveAndRender(msg) {
-    chrome.storage.local.set({ 'lpse_data': currentData });
-    renderTable(currentData);
-    updateStatus(msg);
-    document.getElementById('downloadArea').style.display = 'flex';
-}
-
-function updateStatus(msg) { 
-    const el = document.getElementById('status');
-    if (el) el.innerText = msg; 
-}
-
-function highlightRow(kode) {
-    // Cari elemen baris berdasarkan kode (kita perlu sedikit modifikasi renderTable untuk kasih ID/Class unik, 
-    // tapi cara kasar ini cukup scan text)
-    const rows = document.querySelectorAll('.main-row');
-    rows.forEach(row => {
-        if (row.innerHTML.includes(kode)) {
-            row.style.backgroundColor = "#d4edda"; // Hijau muda sukses
-            setTimeout(() => { row.style.backgroundColor = ""; }, 1500);
-        }
-    });
-}
-
+// --- RENDER TABLE (ACCORDION + PROXY CLICK) ---
 function renderTable(items) {
     const tbody = document.getElementById('tableBody');
     document.getElementById('dataCount').innerText = items.length;
     tbody.innerHTML = '';
-
     if (items.length === 0) return;
 
-    items.forEach((item, index) => {
+    items.forEach((item) => {
+        // Main Row
         const trMain = document.createElement('tr');
         trMain.className = 'main-row';
         if (item._hasDetail) trMain.classList.add('has-detail');
@@ -130,7 +109,7 @@ function renderTable(items) {
         let displayMoney = displayValue === 0 ? '<span class="nil-null">Belum Ada</span>' : formatMoney(displayValue);
 
         trMain.innerHTML = `
-            <td class="toggle-col">${item._hasDetail ? '✓' : '+'}</td>
+            <td class="toggle-col" style="color: ${item._hasDetail ? '#28a745' : '#007bff'}">${item._hasDetail ? '&#10003;' : '+'}</td>
             <td>
                 <div style="font-weight:bold; margin-bottom:2px;">${item.nama_paket || '-'}</div>
                 <div style="font-size:9px; color:#666;">${item.kode} | ${item.instansi || ''}</div>
@@ -138,44 +117,52 @@ function renderTable(items) {
             <td style="text-align:right; font-weight:600;">${displayMoney}</td>
         `;
 
-        // Proxy Link Click (DIRECT INJECTION METHOD)
+        // --- KLIK TAUTAN (FITUR UTAMA) ---
         const nameDiv = trMain.cells[1].querySelector('div');
         if (item.link_url) {
             nameDiv.innerHTML = `<a href="#" class="paket-link">${item.nama_paket}</a>`;
-            nameDiv.querySelector('a').addEventListener('click', (e) => {
+            nameDiv.querySelector('a').addEventListener('click', async (e) => {
                 e.preventDefault(); e.stopPropagation();
                 
-                // Gunakan chrome.tabs.create agar lebih reliable membuka tab baru dan mentrigger onUpdated
-                chrome.tabs.create({ url: item.link_url, active: true });
+                const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                if (!tab) return;
+
+                // Kirim pesan "simulate_click"
+                try {
+                    await chrome.tabs.sendMessage(tab.id, { action: "simulate_click", url: item.link_url });
+                } catch (err) {
+                    // Jika script mati, suntik ulang -> tunggu -> kirim lagi
+                    console.log("Re-injecting content script...");
+                    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['formatter.js', 'processor.js', 'content.js'] });
+                    setTimeout(() => {
+                        chrome.tabs.sendMessage(tab.id, { action: "simulate_click", url: item.link_url });
+                    }, 500);
+                }
             });
         }
 
+        // Detail Row
         const trDetail = document.createElement('tr');
         trDetail.className = 'detail-row';
-        
         let listHTML = '<div class="list-group">';
-        const keys = Object.keys(item).filter(k => !k.startsWith('_') && k !== 'link_url');
-        keys.forEach(key => {
+        Object.keys(item).filter(k => !k.startsWith('_') && k !== 'link_url').forEach(key => {
             let val = item[key];
             if (val === null || val === undefined || val === "") return;
             let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            if ((key.includes('hps') || key.includes('nilai') || key.includes('pagu')) && typeof val === 'number') {
-                val = formatMoney(val);
-            }
+            if ((key.includes('hps') || key.includes('nilai') || key.includes('pagu')) && typeof val === 'number') val = formatMoney(val);
             listHTML += `<div class="list-item"><span class="label">${label}</span><span class="value">${val}</span></div>`;
         });
         listHTML += '</div>';
-
         trDetail.innerHTML = `<td colspan="3"><div class="detail-container">${listHTML}</div></td>`;
 
+        // Accordion Toggle
         trMain.addEventListener('click', () => {
-            const isOpen = trDetail.classList.contains('show');
-            if (isOpen) {
-                trDetail.classList.remove('show');
-                trMain.style.backgroundColor = '';
+            if (trDetail.classList.contains('show')) {
+                trDetail.classList.remove('show'); trMain.style.backgroundColor = '';
+                trMain.cells[0].innerHTML = item._hasDetail ? '&#10003;' : '+';
             } else {
-                trDetail.classList.add('show');
-                trMain.style.backgroundColor = '#f1f3f5';
+                trDetail.classList.add('show'); trMain.style.backgroundColor = '#f1f3f5';
+                trMain.cells[0].innerText = '-';
             }
         });
 
@@ -184,29 +171,18 @@ function renderTable(items) {
     });
 }
 
-function formatMoney(num) {
-    return "Rp " + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ".");
-}
+// Helpers
+function saveAndRender(msg) { chrome.storage.local.set({ 'lpse_data': currentData }); renderTable(currentData); updateStatus(msg); document.getElementById('downloadArea').style.display = 'flex'; }
+function updateStatus(msg) { const el = document.getElementById('status'); if(el) el.innerText = msg; }
+function formatMoney(num) { return "Rp " + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+function highlightRow(kode, color) { const rows = document.querySelectorAll('.main-row'); rows.forEach(row => { if (row.innerText.includes(kode)) { row.style.backgroundColor = color || "#d4edda"; if (!isBatchProcessing) setTimeout(() => { row.style.backgroundColor = ""; }, 1500); } }); }
 
-// Download Handlers (Sama seperti sebelumnya)
-document.getElementById('btnDownloadCsv').addEventListener('click', () => {
-    if (currentData.length === 0) return;
-    const csvContent = LpseRepository.toCSV(currentData);
-    downloadFile(csvContent, 'csv');
-});
-document.getElementById('btnDownloadJson').addEventListener('click', () => {
-    if (currentData.length === 0) return;
-    const jsonContent = LpseRepository.toJSON(currentData);
-    downloadFile(jsonContent, 'json');
-});
-
+// Download
+document.getElementById('btnDownloadCsv').addEventListener('click', () => downloadFile(LpseRepository.toCSV(currentData), 'csv'));
+document.getElementById('btnDownloadJson').addEventListener('click', () => downloadFile(LpseRepository.toJSON(currentData), 'json'));
 function downloadFile(content, type) {
-    const mime = type === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json';
-    const blob = new Blob([content], { type: mime });
+    const blob = new Blob([content], { type: type === 'csv' ? 'text/csv;charset=utf-8;' : 'application/json' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; 
-    a.download = `LPSE_Data_${new Date().getTime()}.${type}`;
-    document.body.appendChild(a); a.click();
-    setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 0);
+    const a = document.createElement('a'); a.href = url; a.download = `LPSE_Data_${Date.now()}.${type}`;
+    document.body.appendChild(a); a.click(); setTimeout(() => { document.body.removeChild(a); window.URL.revokeObjectURL(url); }, 0);
 }

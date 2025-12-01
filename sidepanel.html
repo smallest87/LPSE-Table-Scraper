@@ -3,57 +3,131 @@
 <head>
   <meta charset="UTF-8"> 
   <style>
-    body { margin: 0; padding: 15px; font-family: 'Segoe UI', sans-serif; background-color: #f8f9fa; }
+    body { 
+        margin: 0; 
+        padding: 15px; 
+        font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+        background-color: #f8f9fa; 
+    }
     
-    /* Header & Status */
-    .header-area { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 2px solid #e9ecef; padding-bottom: 10px; }
+    /* --- HEADER & STATUS --- */
+    .header-area { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 15px; 
+        border-bottom: 2px solid #e9ecef; 
+        padding-bottom: 10px; 
+    }
     h3 { margin: 0; font-size: 16px; color: #343a40; }
-    .badge-count { background: #007bff; color: white; padding: 2px 6px; border-radius: 10px; font-size: 10px; }
+    .badge-count { 
+        background: #007bff; 
+        color: white; 
+        padding: 2px 8px; 
+        border-radius: 10px; 
+        font-size: 11px; 
+        font-weight: bold;
+    }
     
-    /* Controls */
-    .btn-main { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 6px; margin-bottom: 10px; transition: background 0.2s; }
-    .btn-main:hover { background: #0056b3; }
+    /* --- CONTROLS / BUTTONS --- */
+    .btn-main { 
+        width: 100%; 
+        padding: 10px; 
+        color: white; 
+        border: none; 
+        cursor: pointer; 
+        font-weight: bold; 
+        border-radius: 6px; 
+        margin-bottom: 8px; 
+        transition: background 0.2s; 
+        font-size: 12px;
+    }
     
-    #downloadArea { display: none; gap: 5px; margin-bottom: 10px; }
-    .btn-action { flex: 1; padding: 6px; border: none; cursor: pointer; font-weight: bold; color: white; border-radius: 4px; font-size: 11px; }
-    .btn-csv { background-color: #28a745; } 
-    .btn-json { background-color: #fd7e14; } 
-    
-    .status-bar { margin-bottom: 10px; font-size: 11px; color: #6c757d; min-height: 15px; }
+    #btnScrape { background: #007bff; }
+    #btnScrape:hover { background: #0056b3; }
 
-    /* --- TABEL UTAMA --- */
+    #btnBatchScrape { background: #17a2b8; } /* Warna Cyan/Teal */
+    #btnBatchScrape:hover { background: #117a8b; }
+    
+    #downloadArea { 
+        display: none; 
+        gap: 5px; 
+        margin-bottom: 10px; 
+    }
+    .btn-action { 
+        flex: 1; 
+        padding: 8px; 
+        border: none; 
+        cursor: pointer; 
+        font-weight: bold; 
+        color: white; 
+        border-radius: 4px; 
+        font-size: 11px; 
+    }
+    .btn-csv { background-color: #28a745; } 
+    .btn-csv:hover { background-color: #218838; }
+    .btn-json { background-color: #fd7e14; } 
+    .btn-json:hover { background-color: #e06b0e; }
+    
+    .status-bar { 
+        margin-bottom: 10px; 
+        font-size: 11px; 
+        color: #6c757d; 
+        min-height: 15px; 
+        word-wrap: break-word;
+    }
+
+    /* --- TABEL WRAPPER --- */
     .table-wrapper { 
         background: white;
         border: 1px solid #dee2e6;
         border-radius: 6px;
-        overflow: hidden; /* Penting untuk border radius */
+        overflow: hidden;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
     }
     
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
     
-    th { background-color: #f1f3f5; padding: 10px 8px; text-align: left; font-weight: 600; color: #495057; border-bottom: 2px solid #dee2e6; }
+    th { 
+        background-color: #f1f3f5; 
+        padding: 10px 8px; 
+        text-align: left; 
+        font-weight: 600; 
+        color: #495057; 
+        border-bottom: 2px solid #dee2e6; 
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
     
-    /* Baris Utama */
-    tr.main-row { border-bottom: 1px solid #f1f1f1; cursor: pointer; transition: background 0.1s; }
+    td { padding: 8px; vertical-align: middle; color: #212529; border-bottom: 1px solid #f1f1f1; }
+    
+    /* --- LOGIKA BARIS ACCORDION --- */
+    tr.main-row { cursor: pointer; transition: background 0.1s; }
     tr.main-row:hover { background-color: #f8f9fa; }
-    tr.main-row.has-detail { border-left: 3px solid #28a745; } /* Indikator sudah ada detail */
     
-    td { padding: 8px; vertical-align: middle; color: #212529; }
+    /* Indikator baris yang sudah punya detail (border kiri hijau) */
+    tr.main-row.has-detail { border-left: 3px solid #28a745; } 
     
-    /* Kolom Toggle (+) */
-    .toggle-col { width: 20px; text-align: center; color: #007bff; font-weight: bold; font-size: 14px; }
+    /* Kolom Toggle (+ / - / ✓) */
+    .toggle-col { 
+        width: 25px; 
+        text-align: center; 
+        font-weight: bold; 
+        font-size: 14px; 
+    }
     
     /* Baris Detail (Hidden by default) */
-    tr.detail-row { display: none; background-color: #f8f9fa; }
+    tr.detail-row { display: none; background-color: #fcfcfc; }
     tr.detail-row.show { display: table-row; }
     
-    /* --- LIST GROUP (Tampilan Detail) --- */
-    .detail-container { padding: 10px 15px; }
+    /* --- LIST GROUP (TAMPILAN DETAIL) --- */
+    .detail-container { padding: 10px 15px; border-bottom: 2px solid #e9ecef; }
     
     .list-group {
         display: flex;
         flex-direction: column;
-        gap: 5px;
+        gap: 6px;
     }
     
     .list-item {
@@ -61,31 +135,39 @@
         justify-content: space-between;
         border-bottom: 1px solid #e9ecef;
         padding-bottom: 4px;
-        font-size: 10px;
+        font-size: 11px;
     }
     .list-item:last-child { border-bottom: none; }
     
     .label { font-weight: 600; color: #6c757d; width: 40%; }
     .value { color: #212529; width: 60%; text-align: right; word-break: break-word; }
     
-    /* Styling khusus untuk Link di tabel utama */
-    .paket-link { color: #007bff; text-decoration: none; font-weight: 600; }
+    /* --- UTILITIES --- */
+    .paket-link { 
+        color: #007bff; 
+        text-decoration: none; 
+        font-weight: 600; 
+        font-size: 12px;
+    }
     .paket-link:hover { text-decoration: underline; }
 
     .nil-null { color: #adb5bd; font-style: italic; }
   </style>
 </head>
 <body>
+  
   <div class="header-area">
       <h3>LPSE Scraper</h3>
       <span id="dataCount" class="badge-count">0</span>
   </div>
   
   <button id="btnScrape" class="btn-main">AMBIL DATA / UPDATE</button>
+  <button id="btnBatchScrape" class="btn-main">SCRAPE SEMUA DETAIL (Antrean)</button>
+  
   <div id="status" class="status-bar">Siap...</div>
 
   <div id="downloadArea">
-      <button id="btnDownloadCsv" class="btn-action btn-csv">CSV</button>
+      <button id="btnDownloadCsv" class="btn-action btn-csv">CSV (;)</button>
       <button id="btnDownloadJson" class="btn-action btn-json">JSON</button>
   </div>
   
@@ -93,11 +175,13 @@
       <table id="resultTable">
         <thead>
             <tr>
-                <th style="width: 20px;"></th> <th>NAMA PAKET</th>
+                <th style="width: 20px;"></th> 
+                <th>NAMA PAKET</th>
                 <th style="text-align: right;">NILAI / HPS</th>
             </tr>
         </thead>
-        <tbody id="tableBody"></tbody>
+        <tbody id="tableBody">
+            </tbody>
       </table>
   </div>
 

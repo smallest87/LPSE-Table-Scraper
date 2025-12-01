@@ -1,5 +1,9 @@
 (function() {
-    // 1. DETEKSI MODE HALAMAN
+    // -----------------------------------------------------------------------
+    // BAGIAN 1: DETEKSI & SCRAPING DATA
+    // -----------------------------------------------------------------------
+
+    // Elemen indikator
     const listTabEl = document.querySelector('ul#tabs li.nav-item a.active');
     const detailTableEl = document.querySelector('.content .table, .content-detail .table');
 
@@ -34,33 +38,68 @@
                 });
             }
         }
-        return; 
     }
 
     // --- MODE B: DETAIL PAKET ---
     else if (detailTableEl) {
         const singleData = DetailPageInterface.getRawData(detailTableEl);
-        const dataList = [singleData];
-        
         chrome.runtime.sendMessage({
-            action: "data_scraped", items: dataList, count: 1, source: "Detail Paket", type: "detail"
+            action: "data_scraped", items: [singleData], count: 1, source: "Detail Paket", type: "detail"
         });
-        return;
     }
 
-    // --- LISTENER BUKA LINK (Proxy Click) ---
-    if (!window.hasLinkListener) {
-        window.hasLinkListener = true;
+    // --- MODE C: TIDAK DIKENALI ---
+    else {
+        // Console log saja, jangan alert
+        console.log("[LPSE Scraper] Struktur halaman tidak cocok.");
+    }
+
+    // -----------------------------------------------------------------------
+    // BAGIAN 2: MANIPULASI KLIK (UNTUK REFERRER/SESSION AMAN)
+    // -----------------------------------------------------------------------
+    
+    if (!window.hasClickListener) {
+        window.hasClickListener = true;
+        
         chrome.runtime.onMessage.addListener((request) => {
-            if (request.action === "open_link_in_tab") {
-                window.open(request.url, '_blank');
+            
+            // ACTION: SIMULASI KLIK
+            if (request.action === "simulate_click") {
+                const targetUrl = request.url;
+                
+                // 1. Coba Cari Link Asli di DOM (Paling Aman)
+                const allLinks = document.querySelectorAll('a');
+                let found = false;
+
+                for (let link of allLinks) {
+                    if (link.href === targetUrl) {
+                        link.focus();
+                        link.click(); // Klik Native
+                        found = true;
+                        break;
+                    }
+                }
+
+                // 2. Link Hantu (Fallback jika elemen tidak ketemu)
+                // Membuat elemen A baru, klik, lalu hapus.
+                // Ini memaksa browser mengirim Referrer dari halaman ini.
+                if (!found) {
+                    console.log("[LPSE Scraper] Menggunakan Ghost Link...");
+                    const ghostLink = document.createElement('a');
+                    ghostLink.href = targetUrl;
+                    ghostLink.target = "_blank";
+                    ghostLink.rel = "opener"; // Penting untuk session
+                    ghostLink.style.display = "none";
+                    
+                    document.body.appendChild(ghostLink);
+                    ghostLink.click();
+                    
+                    setTimeout(() => {
+                        document.body.removeChild(ghostLink);
+                    }, 100);
+                }
             }
         });
     }
 
-// --- SKENARIO C: TIDAK DIKENALI ---
-    else {
-        // alert("[LPSE Scraper] Halaman tidak dikenali..."); // MATIKAN ALERT INI
-        console.log("[LPSE Scraper] Struktur halaman tidak cocok dengan pattern List atau Detail.");
-    }
 })();
