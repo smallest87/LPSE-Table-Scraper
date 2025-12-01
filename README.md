@@ -60,9 +60,10 @@ Agar Side Panel mudah diakses:
 
 🎉 **Selesai!** Sekarang klik ikon ekstensi tersebut untuk membuka Side Panel.
 
+## 👥 PARA SPONSOR
+Masih menunggu orang-orang baik
+
 ## 💰 DONASI
-### 👥 PARA SPONSOR
-(Menunggu orang baik)
 
 ### 📢 STATUS DONASI:
 ```
@@ -80,3 +81,8 @@ Target Impian:
 █|░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░| IDR 26.499.000 |
 Terkumpul: IDR 0,00 (0%)
 ```
+
+### LINK DONASI
+1. [SAWERIA](https://saweria.co/juliansukrisna)
+2. [SOCIABUZZ](https://sociabuzz.com/juliansukrisna/tribe)
+3. [TRAKTEER](https://teer.id/juliansukrisna)
