@@ -22,7 +22,7 @@ document.getElementById('btnScrape').addEventListener('click', async () => {
     await injectAndScrape(tab.id);
 });
 
-// 3. BATCH SCRAPE BUTTON (LOGIKA BARU: JEDA ACAK)
+// 3. BATCH SCRAPE BUTTON (LOGIKA BARU: RANDOM ORDER)
 document.getElementById('btnBatchScrape').addEventListener('click', async () => {
     if (isBatchProcessing) {
         isBatchProcessing = false;
@@ -30,15 +30,20 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
         return;
     }
 
-    const targets = currentData.filter(item => item.link_url && !item._hasDetail);
+    // Ambil target yg belum punya detail
+    let targets = currentData.filter(item => item.link_url && !item._hasDetail);
+    
     if (targets.length === 0) {
         updateStatus("Semua detail sudah lengkap!");
         return;
     }
 
-    if (!confirm(`Akan memproses ${targets.length} paket. Estimasi waktu: ~${Math.round((targets.length * ((DELAY_MIN+DELAY_MAX)/2))/1000)} detik. Lanjutkan?`)) return;
+    if (!confirm(`Akan memproses ${targets.length} paket secara ACAK. Estimasi waktu: ~${Math.round((targets.length * ((DELAY_MIN+DELAY_MAX)/2))/1000)} detik. Lanjutkan?`)) return;
 
-    // Ambil ID Tab Daftar Utama
+    // --- LANGKAH PENTING: ACAK URUTAN TARGET ---
+    targets = shuffleArray(targets);
+    // -------------------------------------------
+
     const [mainTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!mainTab) { updateStatus("Error: Tidak dapat menemukan tab utama."); return; }
     const mainTabId = mainTab.id;
@@ -51,7 +56,9 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
         if (!isBatchProcessing) break;
 
         const item = targets[i];
-        updateStatus(`[${i+1}/${targets.length}] Memproses: ${item.kode}...`);
+        updateStatus(`[${i+1}/${targets.length}] Memproses (Acak): ${item.kode}...`);
+        
+        // Highlight baris agar user tahu mana yang sedang dikerjakan (akan lompat-lompat)
         highlightRow(item.kode, '#fff3cd');
 
         try {
@@ -69,9 +76,8 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
             // 3. Tunggu Loading
             await waitForTabLoad(newTab.id);
 
-            // --- JEDA KECIL SEBELUM SCRAPE (Simulasi user membaca) ---
-            // Acak antara 500ms - 1500ms
-            await randomDelay(500, 1500);
+            // Jeda Pra-Scrape (User membaca)
+            await randomDelay(1000, 3000);
 
             // 4. Inject & Scrape
             await injectAndScrape(newTab.id);
@@ -82,10 +88,9 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
             // 6. Tutup Tab
             await chrome.tabs.remove(newTab.id);
 
-            // --- JEDA HUMANIS ANTAR PAKET (UTAMA) ---
-            // Ini agar tidak dianggap spamming
+            // Jeda Antar Paket
             const delay = getRandomInt(DELAY_MIN, DELAY_MAX);
-            updateStatus(`Istirahat ${Math.round(delay/100)/10} detik...`); // Tampilkan status
+            updateStatus(`Istirahat ${Math.round(delay/100)/10} detik...`);
             await new Promise(r => setTimeout(r, delay));
 
         } catch (err) {
@@ -100,7 +105,14 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
 });
 
 
-// --- HELPER BARU: RANDOM DELAY ---
+// --- HELPER BARU: SHUFFLE ARRAY (Fisher-Yates) ---
+function shuffleArray(array) {
+    for (let i = array.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [array[i], array[j]] = [array[j], array[i]];
+    }
+    return array;
+}
 
 function getRandomInt(min, max) {
     return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -111,7 +123,7 @@ function randomDelay(min, max) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// --- HELPER LAINNYA (SAMA SEPERTI SEBELUMNYA) ---
+// --- HELPER LAINNYA (TETAP SAMA) ---
 
 function triggerClickAndWaitForTab(mainTabId, url) {
     return new Promise((resolve) => {
@@ -170,9 +182,7 @@ function waitForDataUpdate(kode) {
 
 // FUNGSI INJEKSI
 async function injectAndScrape(tabId) {
-    // Jangan update status "Sedang mengambil..." jika sedang batch, agar tidak menimpa status "Istirahat"
     if (!isBatchProcessing) updateStatus("Mengambil data..."); 
-    
     try {
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
