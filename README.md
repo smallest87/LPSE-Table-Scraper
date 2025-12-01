@@ -64,6 +64,7 @@ Agar Side Panel mudah diakses:
 ### PARA SPONSOR
 
 ### STATUS DONASI:
+```
 Operasional Bulanan (DES 2025)
 █|░░░░░░░░░░░░░░░░░░░░░░░░░| IDR 6.000.000|
 Terkumpul: IDR 0,00
@@ -76,3 +77,4 @@ Target Impian:
 14-inch MacBook Pro M4
 █|░░░░░░░░░░░░░░░░░░░░░░░░░| IDR26.499.000|
 Terkumpul: IDR 0,00
+```
