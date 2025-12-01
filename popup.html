@@ -2,17 +2,31 @@
 <html>
 <head>
   <style>
-    body { width: 300px; padding: 10px; font-family: sans-serif; }
-    button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; }
+    body { width: 600px; padding: 10px; font-family: sans-serif; } /* Perlebar body */
+    button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
     button:hover { background: #0056b3; }
-    textarea { width: 100%; height: 150px; margin-top: 10px; font-size: 11px; }
+    
+    /* Styling Tabel Sederhana */
+    #resultTable { width: 100%; border-collapse: collapse; font-size: 10px; }
+    #resultTable th, #resultTable td { border: 1px solid #ddd; padding: 5px; text-align: left; }
+    #resultTable th { background-color: #f2f2f2; }
+    
+    .status-bar { margin-bottom: 10px; font-size: 12px; font-weight: bold; }
   </style>
 </head>
 <body>
   <h3>LPSE Scraper</h3>
-  <button id="btnScrape">SCRAPE DATA TABEL</button>
-  <div id="status"></div>
-  <textarea id="output" placeholder="Hasil akan muncul di sini..."></textarea>
+  <button id="btnScrape">SCRAPE & TAMPILKAN TABEL</button>
+  <div id="status" class="status-bar"></div>
+  
+  <table id="resultTable">
+    <thead>
+        <tr id="tableHeader"></tr>
+    </thead>
+    <tbody id="tableBody">
+    </tbody>
+  </table>
+
   <script src="popup.js"></script>
 </body>
 </html>
