@@ -60,11 +60,11 @@ Agar Side Panel mudah diakses:
 
 🎉 **Selesai!** Sekarang klik ikon ekstensi tersebut untuk membuka Side Panel.
 
-## DONASI
-### PARA SPONSOR
+## 💰 DONASI
+### 👥 PARA SPONSOR
 (Menunggu orang baik)
 
-### STATUS DONASI:
+### 📢 STATUS DONASI:
 ```
 OPERASIONAL BULANAN
 Biaya Hidup & Menghidupi (DES 2025)
