@@ -67,6 +67,7 @@ Masih menunggu orang-orang baik
 
 ### LINK DONASI
 1. [SAWERIA](https://saweria.co/juliansukrisna) - QRIS, GoPay, OVO, Dana, LinkAja
+2. [Lynk.id](https://lynk.id/smallest87/gg8dgvjk0dpl/checkout) ShoopePay, OVO, QRIS, Dana, Virtual Account, Credt Card
 2. [SOCIABUZZ](https://sociabuzz.com/juliansukrisna/tribe) - eWallet, QRIS, Bank Transfer, Retail Outlet, Credit Card
 3. [TRAKTEER](https://teer.id/juliansukrisna)
 
