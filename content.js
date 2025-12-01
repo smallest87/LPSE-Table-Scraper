@@ -82,4 +82,17 @@
         count: dataList.length,
         source: activeTabName
     });
+
+    // --- FITUR BARU: LISTENER UNTUK BUKA LINK ---
+    // Mencegah duplicate listener jika script di-inject berkali-kali
+    if (!window.hasLinkListener) {
+        window.hasLinkListener = true;
+        
+        chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+            if (request.action === "open_link_in_tab") {
+                // Membuka URL dari konteks halaman ini (Referrer aman)
+                window.open(request.url, '_blank');
+            }
+        });
+    }
 })();

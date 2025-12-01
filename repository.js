@@ -2,7 +2,7 @@ if (typeof LpseRepository === 'undefined') {
     window.LpseRepository = class LpseRepository {
         static toCSV(dataArray) {
             const header = [
-                "Kode", "Nama Paket", "Versi SPSE", "Jenis Pekerjaan", 
+                "Kode", "Nama Paket", "Link Paket", "Versi SPSE", "Jenis Pekerjaan", 
                 "Tahun Anggaran", "Jenis Kontrak", "Sistem Kontrak", 
                 "Nilai Kontrak", "Instansi", "Tahapan", "HPS"
             ].join(";") + "\n";
@@ -11,12 +11,12 @@ if (typeof LpseRepository === 'undefined') {
                 return [
                     `"${(item.kode || "").replace(/"/g, '""')}"`,
                     `"${(item.nama_paket || "").replace(/"/g, '""')}"`,
+                    `"${(item.link_url || "").replace(/"/g, '""')}"`, // KOLOM BARU
                     `"${(item.versi_spse || "").replace(/"/g, '""')}"`,
                     `"${(item.jenis_pekerjaan || "").replace(/"/g, '""')}"`,
                     `"${(item.tahun_anggaran || "").replace(/"/g, '""')}"`,
                     `"${(item.jenis_kontrak || "").replace(/"/g, '""')}"`,
                     `"${(item.sistem_kontrak || "").replace(/"/g, '""')}"`,
-                    // HANDLING NULL: Jika null ganti string kosong, jika ada isi pakai isinya
                     `"${(item.nilai_kontrak !== null ? item.nilai_kontrak : "")}"`,
                     `"${(item.instansi || "").replace(/"/g, '""')}"`,
                     `"${(item.tahapan || "").replace(/"/g, '""')}"`,

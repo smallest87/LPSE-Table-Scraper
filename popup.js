@@ -10,7 +10,6 @@ document.getElementById('btnScrape').addEventListener('click', async () => {
 
     chrome.scripting.executeScript({
         target: { tabId: tab.id },
-        // URUTAN KRUSIAL: formatter -> processor -> content
         files: ['formatter.js', 'processor.js', 'content.js']
     }, () => {
         if (chrome.runtime.lastError) {
@@ -30,8 +29,6 @@ chrome.runtime.onMessage.addListener((request) => {
         document.getElementById('downloadArea').style.display = 'flex';
     }
 });
-
-// --- TOMBOL DOWNLOAD ---
 
 document.getElementById('btnDownloadCsv').addEventListener('click', () => {
     if (scrapedData.length === 0) return;
@@ -78,7 +75,9 @@ function renderTable(items) {
 
     if (items.length === 0) return;
 
-    const headers = Object.keys(items[0]);
+    // Filter header agar link_url tidak muncul sebagai kolom
+    const headers = Object.keys(items[0]).filter(k => k !== 'link_url');
+    
     headers.forEach(key => {
         const th = document.createElement('th');
         th.innerText = key.replace(/_/g, ' ').toUpperCase();
@@ -89,24 +88,58 @@ function renderTable(items) {
         const tr = document.createElement('tr');
         headers.forEach(key => {
             const td = document.createElement('td');
-            
             let displayValue = item[key];
             
-            // LOGIKA TAMPILAN:
-            // Jika kolom adalah 'nilai_kontrak' dan isinya 0,
-            // Kita anggap itu sebagai "Belum Dibuat" secara visual.
-            if (key === 'nilai_kontrak' && displayValue === 0) {
-                displayValue = "Nilai Kontrak belum dibuat";
+            // --- LOGIKA KLIK NAMA PAKET (PROXY CLICK) ---
+            if (key === 'nama_paket' && item.link_url) {
+                // Buat elemen <a> tapi HAPUS href-nya agar tidak buka otomatis
+                // Kita simpan URL asli di data-url
+                const link = document.createElement('a');
+                link.innerText = displayValue;
+                link.href = "#"; // Dummy href
+                link.style.color = "#007bff";
+                link.style.fontWeight = "bold";
+                link.style.textDecoration = "none";
+                link.style.cursor = "pointer";
+                
+                // Event Listener Klik
+                link.addEventListener('click', async (e) => {
+                    e.preventDefault(); // Cegah aksi default
+                    
+                    // Kirim perintah ke Content Script
+                    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+                    if (tab) {
+                        chrome.tabs.sendMessage(tab.id, {
+                            action: "open_link_in_tab",
+                            url: item.link_url
+                        });
+                    }
+                });
+                
+                td.appendChild(link);
+            } 
+            
+            // --- Logika Nilai Kontrak 0 ---
+            else if (key === 'nilai_kontrak' && displayValue === 0) {
+                td.innerText = "Nilai Kontrak belum dibuat";
                 td.style.color = "#999"; 
                 td.style.fontStyle = "italic";
             } 
-            // Handle null/undefined umum
-            else if (displayValue === null || displayValue === undefined) {
-                displayValue = "-";
+            
+            // --- Default ---
+            else {
+                if (displayValue === null || displayValue === undefined) displayValue = "-";
+                td.innerText = displayValue;
             }
 
-            td.innerText = displayValue;
-            tr.appendChild(td);
+            if (key !== 'nama_paket' || !item.link_url) {
+                tr.appendChild(td);
+            } else {
+                // Khusus nama paket karena kita pakai appendChild(link), bukan innerText
+                const tdLink = document.createElement('td');
+                tdLink.appendChild(td.firstChild); 
+                tr.appendChild(tdLink);
+            }
         });
         tbody.appendChild(tr);
     });

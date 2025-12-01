@@ -1,4 +1,4 @@
-// --- MASTER DATA ---
+// --- MASTER DATA & HELPER (TETAP SAMA, TIDAK DIUBAH) ---
 if (typeof MASTER_DATA === 'undefined') {
     var MASTER_DATA = {
         VERSI_SPSE: ["spse 3", "spse 4.5", "spse 4.4", "spse 4.3", "spse 5.0"],
@@ -21,7 +21,6 @@ if (typeof MASTER_DATA === 'undefined') {
     };
 }
 
-// --- HELPER ---
 if (typeof findMatch === 'undefined') {
     window.findMatch = function(text, list) {
         if (!text) return null;
@@ -33,26 +32,27 @@ if (typeof findMatch === 'undefined') {
     };
 }
 
-// --- PARSERS ---
+// --- PARSERS (UPDATE DI SINI) ---
 
 if (typeof NamaPaketParser === 'undefined') {
     window.NamaPaketParser = class NamaPaketParser {
         static parse(tdElement) {
             const paragraphs = tdElement.querySelectorAll('p');
-            let result = { nama_paket: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: null, keterangan_lain: "" };
+            // Tambahkan property link_url
+            let result = { nama_paket: "", link_url: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: null, keterangan_lain: "" };
 
             if (paragraphs.length === 0) return result;
 
-            // 1. Nama Paket
             const p1 = paragraphs[0];
             const anchor = p1.querySelector('a');
             if (anchor) {
                 const tempAnchor = anchor.cloneNode(true);
                 tempAnchor.querySelectorAll('.badge').forEach(b => b.remove());
                 result.nama_paket = tempAnchor.innerText.trim();
+                // AMBIL ABSOLUTE URL
+                result.link_url = anchor.href; 
             }
 
-            // 2. Kandidat Teks
             let candidates = [];
             p1.querySelectorAll('.badge').forEach(b => candidates.push(b.innerText.trim()));
             if (paragraphs[1]) {
@@ -60,7 +60,6 @@ if (typeof NamaPaketParser === 'undefined') {
                 candidates = candidates.concat(metaParts);
             }
 
-            // 3. Filter
             let unknownParts = [];
             candidates.forEach(text => {
                 let isIdentified = false;
@@ -75,7 +74,6 @@ if (typeof NamaPaketParser === 'undefined') {
             result.metode_pengadaan = result.metode_pengadaan.join(", ");
             result.keterangan_lain = unknownParts.join(" - ");
 
-            // 4. Nilai Kontrak (Processing Langsung disini)
             if (paragraphs[2]) {
                 const rawNilai = paragraphs[2].innerText.replace(/Nilai Kontrak\s*:/i, "").trim();
                 result.nilai_kontrak = DataFormatter.parseNilaiKontrak(rawNilai);
@@ -89,18 +87,22 @@ if (typeof NamaPaketParser === 'undefined') {
 if (typeof PencatatanParser === 'undefined') {
     window.PencatatanParser = class PencatatanParser {
         static parse(tdElement) {
-            let result = { nama_paket: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: null, keterangan_lain: "" };
+            let result = { nama_paket: "", link_url: "", versi_spse: "", jenis_pekerjaan: "", tahun_anggaran: "", metode_pengadaan: [], nilai_kontrak: null, keterangan_lain: "" };
             
             const anchor = tdElement.querySelector('a');
-            if (anchor) result.nama_paket = anchor.innerText.trim();
+            if (anchor) {
+                result.nama_paket = anchor.innerText.trim();
+                // AMBIL ABSOLUTE URL
+                result.link_url = anchor.href;
+            }
 
             let candidates = [];
             tdElement.querySelectorAll('.badge').forEach(b => candidates.push(b.innerText.trim()));
             tdElement.querySelectorAll('p').forEach(p => {
                 const rawText = p.innerText;
                 const normalized = rawText.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
-                rawText.split(' - ').forEach(part => candidates.push(part.trim())); // Split original
-                candidates.push(normalized); // Normalized
+                rawText.split(' - ').forEach(part => candidates.push(part.trim()));
+                candidates.push(normalized);
             });
 
             let unknownParts = [];
@@ -126,7 +128,7 @@ if (typeof PencatatanParser === 'undefined') {
     }
 }
 
-// --- INTERFACES ---
+// --- INTERFACES (Pastikan spread operator ...details membawa link_url) ---
 
 if (typeof LelangInterface === 'undefined') {
     window.LelangInterface = class LelangInterface {
@@ -136,7 +138,7 @@ if (typeof LelangInterface === 'undefined') {
             const details = NamaPaketParser.parse(cols[1]);
             return {
                 kode: cols[0].innerText.trim(),
-                ...details,
+                ...details, // link_url ikut terbawa di sini
                 instansi: cols[2].innerText.trim(),
                 tahapan: cols[3].innerText.trim(),
                 hps: DataFormatter.parseHPS(cols[4].innerText.trim())
