@@ -189,7 +189,7 @@ class NamaPaketParser {
 
 /**
  * Parser Khusus untuk struktur Pencatatan (Non Tender/Swakelola/Darurat)
- * Struktur HTML: <td> <a>Nama</a> <badge> <badge> <p>Meta</p> </td>
+ * Menangani anomali seperti "TA - 2025" (ada pemisah strip)
  */
 class PencatatanParser {
     static parse(tdElement) {
@@ -202,8 +202,7 @@ class PencatatanParser {
             keterangan_lain: ""
         };
 
-        // 1. Ekstraksi Nama Paket
-        // Pada pencatatan, Nama Paket ada di tag <a> langsung (child dari td), bukan di dalam <p>
+        // 1. Ekstraksi Nama Paket (Tag <a> langsung)
         const anchor = tdElement.querySelector('a');
         if (anchor) {
             result.nama_paket = anchor.innerText.trim();
@@ -212,16 +211,28 @@ class PencatatanParser {
         // 2. Kumpulkan Kandidat Teks untuk Filter
         let candidates = [];
 
-        // A. Ambil dari Badge (biasanya Versi SPSE & Metode seperti "Pengadaan Langsung")
+        // A. Ambil dari Badge
         const badges = tdElement.querySelectorAll('.badge');
         badges.forEach(b => candidates.push(b.innerText.trim()));
 
-        // B. Ambil dari Paragraf Metadata (biasanya "Jasa Lainnya - TA 2025")
+        // B. Ambil dari Paragraf Metadata (<p>)
         const paragraphs = tdElement.querySelectorAll('p');
         paragraphs.forEach(p => {
-            // Split berdasarkan " - "
-            const parts = p.innerText.split(' - ');
+            const rawText = p.innerText;
+            
+            // LOGIKA PENANGANAN SWAKELOLA ("TA - 2025")
+            // Strategi: Masukkan beberapa variasi teks ke dalam kandidat
+            
+            // Variasi 1: Split standar berdasarkan " - " (Untuk menangkap "Jasa Lainnya")
+            const parts = rawText.split(' - ');
             parts.forEach(part => candidates.push(part.trim()));
+
+            // Variasi 2: Normalisasi Strip menjadi Spasi 
+            // Mengubah "TA - 2025" menjadi "TA 2025" agar cocok dengan MASTER_DATA
+            // .replace(/-/g, ' ') -> ganti semua strip dengan spasi
+            // .replace(/\s+/g, ' ') -> ganti spasi ganda jadi satu spasi
+            const normalized = rawText.replace(/-/g, ' ').replace(/\s+/g, ' ').trim();
+            candidates.push(normalized);
         });
 
         // 3. Filter Candidates menggunakan MASTER_DATA
@@ -251,27 +262,28 @@ class PencatatanParser {
                 isIdentified = true;
             }
 
-            // Cek Metode/Sistem
+            // Cek Metode/Sistem (Swakelola, Pengadaan Langsung, dll)
             const metode = findMatch(text, MASTER_DATA.METODE_DAN_SISTEM);
             if (metode && !isIdentified) {
-                // Hindari duplikasi jika metode yang sama muncul di badge DAN paragraph
+                // Hindari duplikasi
                 if (!result.metode_pengadaan.includes(metode)) {
                     result.metode_pengadaan.push(metode);
                 }
                 isIdentified = true;
             }
 
-            if (!isIdentified) {
+            // Simpan teks yang tidak dikenali (kecuali hasil normalisasi TA)
+            if (!isIdentified && text.length > 2 && !text.includes('TA 20')) {
                 unknownParts.push(text);
             }
         });
 
-        // Format hasil akhir
         result.metode_pengadaan = result.metode_pengadaan.join(", ");
-        result.keterangan_lain = unknownParts.join(" - ");
         
-        // Pencatatan biasanya tidak menampilkan "Nilai Kontrak" di kolom Nama Paket
-        // Tapi jika ada polanya nanti, bisa ditambahkan disini.
+        // Membersihkan keterangan lain dari duplikasi hasil split
+        // Filter unik dan gabungkan
+        const uniqueUnknowns = [...new Set(unknownParts)]; 
+        result.keterangan_lain = uniqueUnknowns.join(" - ");
 
         return result;
     }
@@ -332,20 +344,25 @@ class PencatatanNonTenderInterface {
     }
 }
 
+/**
+ * Interface untuk Pencatatan Swakelola
+ * Menggunakan PencatatanParser yang sudah di-upgrade
+ */
 class PencatatanSwakelolaInterface {
     static getRawData(rowElement) {
         const cols = rowElement.querySelectorAll('td');
+        // Validasi kolom minimal
         if (cols.length < 5) return null;
 
-        // Parsing kolom nama paket
-        const details = NamaPaketParser.parse(cols[1]);
+        // Parsing kolom nama paket menggunakan parser khusus
+        const details = PencatatanParser.parse(cols[1]);
 
         return {
-            kode_paket: cols[0].innerText.trim(),
-            ...details,
-            instansi: cols[2].innerText.trim(),
-            status: cols[3].innerText.trim(),
-            pagu: cols[4].innerText.trim()
+            kode: cols[0].innerText.trim(),
+            ...details,                          // Spread hasil parsing (Nama, Versi, TA, dll)
+            instansi: cols[2].innerText.trim(),  // Kolom 2: Instansi
+            tahapan: cols[3].innerText.trim(),   // Kolom 3: Status Swakelola
+            hps: cols[4].innerText.trim()        // Kolom 4: Pagu / Nilai
         };
     }
 }
