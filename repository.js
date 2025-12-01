@@ -1,0 +1,50 @@
+class LpseRepository {
+    /**
+     * Konversi Array Object ke format CSV string
+     * @param {Array} dataArray 
+     * @returns {string} CSV format
+     */
+    static toCSV(dataArray) {
+        const header = [
+            "Kode", 
+            "Nama Paket", 
+            "Versi SPSE", 
+            "Jenis Pekerjaan", 
+            "Tahun Anggaran", 
+            "Jenis Kontrak", 
+            "Sistem Kontrak", 
+            "Nilai Kontrak", 
+            "Instansi", 
+            "Tahapan", 
+            "HPS"
+        ].join(";") + "\n";
+        
+        const body = dataArray.map(item => {
+            return [
+                `"${(item.kode || "").replace(/"/g, '""')}"`,
+                `"${(item.nama_paket || "").replace(/"/g, '""')}"`,
+                `"${(item.versi_spse || "").replace(/"/g, '""')}"`,
+                `"${(item.jenis_pekerjaan || "").replace(/"/g, '""')}"`,
+                `"${(item.tahun_anggaran || "").replace(/"/g, '""')}"`,
+                `"${(item.jenis_kontrak || "").replace(/"/g, '""')}"`,
+                `"${(item.sistem_kontrak || "").replace(/"/g, '""')}"`,
+                `"${(item.nilai_kontrak || "").replace(/"/g, '""')}"`,
+                `"${(item.instansi || "").replace(/"/g, '""')}"`,
+                `"${(item.tahapan || "").replace(/"/g, '""')}"`,
+                `"${(item.hps || "").replace(/"/g, '""')}"`
+            ].join(";");
+        }).join("\n");
+
+        return header + body;
+    }
+
+    /**
+     * Konversi Array Object ke format JSON string (Pretty Print)
+     * @param {Array} dataArray 
+     * @returns {string} JSON format
+     */
+    static toJSON(dataArray) {
+        // null, 4 artinya format JSON akan di-indentasi 4 spasi (pretty print)
+        return JSON.stringify(dataArray, null, 4);
+    }
+}
