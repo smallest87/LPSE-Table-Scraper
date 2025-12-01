@@ -1,6 +1,5 @@
 (function() {
     // 1. DETEKSI TAB AKTIF
-    // Mencari elemen <a> di dalam <ul id="tabs"> yang memiliki class 'active'
     const activeTabEl = document.querySelector('ul#tabs li.nav-item a.active');
     
     if (!activeTabEl) {
@@ -12,29 +11,27 @@
     console.log(`[LPSE Scraper] Tab Aktif Terdeteksi: "${activeTabName}"`);
 
     // 2. DEFINISI SKENARIO
-    // Mapping antara Nama Tab -> Selector Tabel -> Interface Processor
-    // Note: Saya masukkan selector backup (seperti #tbllelang) untuk jaga-jaga jika ID aslinya beda tipis.
+    // Menggunakan multiple selector (koma) untuk fallback ID tabel
     let currentScenario = null;
 
     switch (activeTabName) {
         case 'Tender':
             currentScenario = {
-                // User info: #tabellelang (tapi standar LPSE sering #tbllelang, saya pasang keduanya)
-                tableSelector: '#tbllelang', 
+                tableSelector: '#tabellelang, #tbllelang', 
                 interface: LelangInterface 
             };
             break;
 
         case 'Non Tender':
             currentScenario = {
-                tableSelector: '#tbllelang',
+                tableSelector: '#tabellelang, #tblnontender, #tbllelang',
                 interface: NonTenderInterface 
             };
             break;
 
         case 'Pencatatan Non Tender':
             currentScenario = {
-                tableSelector: '#tbllelang',
+                tableSelector: '#tabellelang, #tblpencatatan, #tbllelang',
                 interface: PencatatanNonTenderInterface 
             };
             break;
@@ -48,7 +45,7 @@
 
         case 'Pencatatan Pengadaan Darurat':
             currentScenario = {
-                tableSelector: '#tabellelang',
+                tableSelector: '#tabellelang, #tbldarurat',
                 interface: PencatatanPengadaanDaruratInterface 
             };
             break;
@@ -71,11 +68,8 @@
     const dataList = [];
 
     rows.forEach(row => {
-        // Gunakan Interface yang sesuai dengan Tab Aktif
         const rowData = currentScenario.interface.getRawData(row);
-        
         if (rowData) {
-            // Kita tambahkan properti 'sumber' agar tahu data ini dari tab mana
             rowData.sumber_data = activeTabName; 
             dataList.push(rowData);
         }
@@ -88,5 +82,4 @@
         count: dataList.length,
         source: activeTabName
     });
-
 })();
