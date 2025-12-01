@@ -1,3 +1,8 @@
+// ... (Bagian atas MASTER_DATA dll TETAP SAMA) ...
+
+// --- SAYA HANYA MENAMPILKAN BAGIAN DETAILPARSER YANG BERUBAH ---
+// Silakan copy full code di bawah ini untuk processor.js
+
 // --- MASTER DATA ---
 if (typeof MASTER_DATA === 'undefined') {
     var MASTER_DATA = {
@@ -94,7 +99,7 @@ if (typeof PencatatanParser === 'undefined') {
     }
 }
 
-// --- PARSER DETAIL PAGE (DIPERBARUI KHUSUS SYARAT KUALIFIKASI) ---
+// --- PARSER DETAIL PAGE ---
 if (typeof DetailParser === 'undefined') {
     window.DetailParser = class DetailParser {
         static parse(tableElement) {
@@ -103,25 +108,20 @@ if (typeof DetailParser === 'undefined') {
             
             rows.forEach(row => {
                 const cells = row.children;
-                // Kita loop manual karena di baris yang sama ada <th>Label</th> dan <td>Value</td>
                 for (let i = 0; i < cells.length; i++) {
                     const cell = cells[i];
                     
-                    // Deteksi Header (TH) atau yang punya class bgwarning
                     if (cell.tagName === 'TH' || cell.classList.contains('bgwarning')) {
                         let rawKey = cell.innerText.trim();
                         if (!rawKey) continue;
                         
-                        // Buat key yang bersih (syarat_kualifikasi, nilai_pagu, dll)
                         let key = rawKey.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-                        
-                        // Value ada di sel berikutnya
                         let nextCell = cells[i + 1];
                         let value = "";
 
                         if (nextCell && nextCell.tagName === 'TD') {
                             
-                            // 1. HANDLER KHUSUS: SYARAT KUALIFIKASI
+                            // 1. SYARAT KUALIFIKASI
                             if (key === 'syarat_kualifikasi') {
                                 value = this.parseSyaratKualifikasi(nextCell);
                             } 
@@ -130,15 +130,19 @@ if (typeof DetailParser === 'undefined') {
                             else {
                                 value = nextCell.innerText.trim();
                                 
-                                // Format Angka/Uang
-                                if (key.includes('hps') || key.includes('pagu') || key.includes('nilai')) {
+                                // FORMAT TANGGAL ISO (NEW!)
+                                if (key === 'tanggal_pembuatan') {
+                                    value = DataFormatter.formatDateISO(value);
+                                }
+                                // Format Uang
+                                else if (key.includes('hps') || key.includes('pagu') || key.includes('nilai')) {
                                     value = DataFormatter.parseHPS(value);
                                 } 
-                                // Bersihkan Kode
+                                // Format Kode
                                 else if (key === 'kode_tender') {
                                     value = value.replace(/\s+/g, '').trim(); 
                                 } 
-                                // Bersihkan Tabel RUP (jika ada tabel lain)
+                                // Bersihkan Table RUP
                                 else if (nextCell.querySelector('table')) {
                                     value = value.replace(/[\r\n]+/g, " ").trim();
                                 }
@@ -152,64 +156,41 @@ if (typeof DetailParser === 'undefined') {
             return result;
         }
 
-        // --- ENGINE PARSER UNTUK SYARAT KUALIFIKASI ---
         static parseSyaratKualifikasi(tdElement) {
             let textOutput = [];
-            
-            // Kita iterate childNodes langsung agar urutan (Judul -> Tabel) terjaga
             tdElement.childNodes.forEach(node => {
-                
-                // A. JUDUL KATEGORI (misal: "Persyaratan Kualifikasi Administrasi...")
-                // Biasanya dalam tag <strong> atau <b>
                 if (node.nodeName === 'STRONG' || node.nodeName === 'B') {
                     const title = node.innerText.trim();
                     if (title) textOutput.push(`\n[${title}]`);
-                }
-                
-                // B. TABEL PERSYARATAN
-                else if (node.nodeName === 'TABLE') {
+                } else if (node.nodeName === 'TABLE') {
                     const rows = node.querySelectorAll('tr');
-                    
                     rows.forEach(row => {
                         const cols = row.querySelectorAll('td');
-                        
-                        // Cek apakah ada NESTED TABLE (Tabel dalam Tabel)
-                        // Contoh kasus: "Jenis Izin" & "NIB 2020"
                         const nestedTable = row.querySelector('table');
-                        
                         if (nestedTable) {
-                            // Parsing tabel izin yang bersarang
                             const nRows = nestedTable.querySelectorAll('tr');
                             nRows.forEach(nRow => {
                                 const nCols = nRow.querySelectorAll('td');
                                 let rowParts = [];
                                 nCols.forEach(c => rowParts.push(c.innerText.trim().replace(/[\r\n]+/g, " ")));
-                                
-                                // Format: "- Jenis Izin : Konstruksi Gedung..."
-                                if (rowParts.length > 0) {
-                                    textOutput.push(`  - ${rowParts.join(" : ")}`);
-                                }
+                                if (rowParts.length > 0) textOutput.push(`  - ${rowParts.join(" : ")}`);
                             });
-                        } 
-                        else if (cols.length > 0) {
-                            // Teks Biasa (misal: "Memiliki NPWP...")
-                            // Ambil teks dari kolom pertama (biasanya cuma 1 kolom utama)
-                            let txt = cols[0].innerText.trim();
-                            // Bersihkan newlines aneh
-                            txt = txt.replace(/[\r\n]+/g, " ");
-                            
+                        } else if (cols.length > 0) {
+                            let txt = cols[0].innerText.trim().replace(/[\r\n]+/g, " ");
                             if (txt) textOutput.push(`- ${txt}`);
                         }
                     });
                 }
             });
-
             return textOutput.join("\n").trim();
         }
     }
 }
 
-// --- INTERFACES ---
+// --- INTERFACES (TETAP SAMA) ---
+// (Bagian bawah Interface Lelang, NonTender dll tidak berubah, 
+//  karena mereka memakai NamaPaketParser yang belum kita ubah tanggalnya, 
+//  tapi DetailParser sudah dihandle di atas)
 
 if (typeof LelangInterface === 'undefined') {
     window.LelangInterface = class LelangInterface {
@@ -217,13 +198,7 @@ if (typeof LelangInterface === 'undefined') {
             const cols = rowElement.querySelectorAll('td');
             if (cols.length < 5) return null;
             const details = NamaPaketParser.parse(cols[1]);
-            return {
-                kode: cols[0].innerText.trim(),
-                ...details,
-                instansi: cols[2].innerText.trim(),
-                tahapan: cols[3].innerText.trim(),
-                hps: DataFormatter.parseHPS(cols[4].innerText.trim())
-            };
+            return { kode: cols[0].innerText.trim(), ...details, instansi: cols[2].innerText.trim(), tahapan: cols[3].innerText.trim(), hps: DataFormatter.parseHPS(cols[4].innerText.trim()) };
         }
     }
 }
@@ -233,13 +208,7 @@ if (typeof NonTenderInterface === 'undefined') {
             const cols = rowElement.querySelectorAll('td');
             if (cols.length < 5) return null;
             const details = NamaPaketParser.parse(cols[1]);
-            return {
-                kode: cols[0].innerText.trim(),
-                ...details,
-                instansi: cols[2].innerText.trim(),
-                tahapan: cols[3].innerText.trim(),
-                hps: DataFormatter.parseHPS(cols[4].innerText.trim())
-            };
+            return { kode: cols[0].innerText.trim(), ...details, instansi: cols[2].innerText.trim(), tahapan: cols[3].innerText.trim(), hps: DataFormatter.parseHPS(cols[4].innerText.trim()) };
         }
     }
 }
@@ -249,13 +218,7 @@ if (typeof PencatatanNonTenderInterface === 'undefined') {
             const cols = rowElement.querySelectorAll('td');
             if (cols.length < 5) return null;
             const details = PencatatanParser.parse(cols[1]);
-            return {
-                kode: cols[0].innerText.trim(),
-                ...details,
-                instansi: cols[2].innerText.trim(),
-                tahapan: cols[3].innerText.trim(),
-                hps: DataFormatter.parseHPS(cols[4].innerText.trim())
-            };
+            return { kode: cols[0].innerText.trim(), ...details, instansi: cols[2].innerText.trim(), tahapan: cols[3].innerText.trim(), hps: DataFormatter.parseHPS(cols[4].innerText.trim()) };
         }
     }
 }
@@ -265,13 +228,7 @@ if (typeof PencatatanSwakelolaInterface === 'undefined') {
             const cols = rowElement.querySelectorAll('td');
             if (cols.length < 5) return null;
             const details = PencatatanParser.parse(cols[1]);
-            return {
-                kode: cols[0].innerText.trim(),
-                ...details,
-                instansi: cols[2].innerText.trim(),
-                tahapan: cols[3].innerText.trim(),
-                hps: DataFormatter.parseHPS(cols[4].innerText.trim())
-            };
+            return { kode: cols[0].innerText.trim(), ...details, instansi: cols[2].innerText.trim(), tahapan: cols[3].innerText.trim(), hps: DataFormatter.parseHPS(cols[4].innerText.trim()) };
         }
     }
 }
@@ -281,26 +238,15 @@ if (typeof PencatatanPengadaanDaruratInterface === 'undefined') {
             const cols = rowElement.querySelectorAll('td');
             if (cols.length < 5) return null;
             const details = NamaPaketParser.parse(cols[1]);
-            return {
-                kode_paket: cols[0].innerText.trim(),
-                ...details,
-                instansi: cols[2].innerText.trim(),
-                status: cols[3].innerText.trim(),
-                pagu: DataFormatter.parseHPS(cols[4].innerText.trim())
-            };
+            return { kode_paket: cols[0].innerText.trim(), ...details, instansi: cols[2].innerText.trim(), status: cols[3].innerText.trim(), pagu: DataFormatter.parseHPS(cols[4].innerText.trim()) };
         }
     }
 }
-
-// --- INTERFACE DETAIL PAGE ---
 if (typeof DetailPageInterface === 'undefined') {
     window.DetailPageInterface = class DetailPageInterface {
         static getRawData(tableElement) {
             const parsedData = DetailParser.parse(tableElement);
-            // Normalisasi agar bisa di-merge: pastikan ada 'kode'
-            if (parsedData.kode_tender) {
-                parsedData.kode = parsedData.kode_tender; // Mapping Kode Tender -> Kode
-            }
+            if (parsedData.kode_tender) parsedData.kode = parsedData.kode_tender; 
             return parsedData;
         }
     }

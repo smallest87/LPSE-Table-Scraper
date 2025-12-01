@@ -2,8 +2,8 @@ let currentData = [];
 let isBatchProcessing = false;
 
 // --- KONFIGURASI JEDA (HUMANIZE) ---
-const DELAY_MIN = 3000; // Minimal 3 detik
-const DELAY_MAX = 7000; // Maksimal 7 detik
+const DELAY_MIN = 3000; 
+const DELAY_MAX = 7000; 
 
 // 1. INIT LOAD
 chrome.storage.local.get(['lpse_data'], (result) => {
@@ -15,35 +15,23 @@ chrome.storage.local.get(['lpse_data'], (result) => {
     }
 });
 
-// 2. MANUAL SCRAPE BUTTON
+// 2. MANUAL SCRAPE
 document.getElementById('btnScrape').addEventListener('click', async () => {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!tab) return;
     await injectAndScrape(tab.id);
 });
 
-// 3. BATCH SCRAPE BUTTON (LOGIKA BARU: RANDOM ORDER)
+// 3. BATCH SCRAPE
 document.getElementById('btnBatchScrape').addEventListener('click', async () => {
-    if (isBatchProcessing) {
-        isBatchProcessing = false;
-        updateStatus("Menghentikan proses...");
-        return;
-    }
+    if (isBatchProcessing) { isBatchProcessing = false; updateStatus("Menghentikan proses..."); return; }
 
-    // Ambil target yg belum punya detail
-    let targets = currentData.filter(item => item.link_url && !item._hasDetail);
-    
-    if (targets.length === 0) {
-        updateStatus("Semua detail sudah lengkap!");
-        return;
-    }
+    const targets = currentData.filter(item => item.link_url && !item._hasDetail);
+    if (targets.length === 0) { updateStatus("Semua detail sudah lengkap!"); return; }
 
-    if (!confirm(`Akan memproses ${targets.length} paket secara ACAK. Estimasi waktu: ~${Math.round((targets.length * ((DELAY_MIN+DELAY_MAX)/2))/1000)} detik. Lanjutkan?`)) return;
+    if (!confirm(`Akan memproses ${targets.length} paket secara ACAK. Lanjutkan?`)) return;
 
-    // --- LANGKAH PENTING: ACAK URUTAN TARGET ---
     targets = shuffleArray(targets);
-    // -------------------------------------------
-
     const [mainTab] = await chrome.tabs.query({ active: true, currentWindow: true });
     if (!mainTab) { updateStatus("Error: Tidak dapat menemukan tab utama."); return; }
     const mainTabId = mainTab.id;
@@ -54,48 +42,24 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
 
     for (let i = 0; i < targets.length; i++) {
         if (!isBatchProcessing) break;
-
         const item = targets[i];
         updateStatus(`[${i+1}/${targets.length}] Memproses (Acak): ${item.kode}...`);
-        
-        // Highlight baris agar user tahu mana yang sedang dikerjakan (akan lompat-lompat)
         highlightRow(item.kode, '#fff3cd');
 
         try {
-            // 1. Fokus Tab Utama
             await chrome.tabs.update(mainTabId, { active: true });
-
-            // 2. Klik Native & Tunggu Tab Baru
             const newTab = await triggerClickAndWaitForTab(mainTabId, item.link_url);
-            
-            if (!newTab) {
-                console.error("Gagal membuka tab untuk:", item.kode);
-                continue;
-            }
-
-            // 3. Tunggu Loading
+            if (!newTab) { console.error("Gagal buka tab:", item.kode); continue; }
             await waitForTabLoad(newTab.id);
-
-            // Jeda Pra-Scrape (User membaca)
             await randomDelay(1000, 3000);
-
-            // 4. Inject & Scrape
             await injectAndScrape(newTab.id);
-
-            // 5. Tunggu Data Masuk
             await waitForDataUpdate(item.kode);
-
-            // 6. Tutup Tab
             await chrome.tabs.remove(newTab.id);
-
-            // Jeda Antar Paket
+            
             const delay = getRandomInt(DELAY_MIN, DELAY_MAX);
             updateStatus(`Istirahat ${Math.round(delay/100)/10} detik...`);
             await new Promise(r => setTimeout(r, delay));
-
-        } catch (err) {
-            console.error("Batch Error:", err);
-        }
+        } catch (err) { console.error("Batch Error:", err); }
     }
 
     isBatchProcessing = false;
@@ -104,8 +68,7 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
     updateStatus("Selesai.");
 });
 
-
-// --- HELPER BARU: SHUFFLE ARRAY (Fisher-Yates) ---
+// --- HELPERS ---
 function shuffleArray(array) {
     for (let i = array.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
@@ -113,43 +76,23 @@ function shuffleArray(array) {
     }
     return array;
 }
-
-function getRandomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function randomDelay(min, max) {
-    const ms = getRandomInt(min, max);
-    return new Promise(resolve => setTimeout(resolve, ms));
-}
-
-// --- HELPER LAINNYA (TETAP SAMA) ---
+function getRandomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randomDelay(min, max) { return new Promise(resolve => setTimeout(resolve, getRandomInt(min, max))); }
 
 function triggerClickAndWaitForTab(mainTabId, url) {
     return new Promise((resolve) => {
         let newTabId = null;
-        const createdListener = (tab) => {
-            newTabId = tab.id;
-            chrome.tabs.onCreated.removeListener(createdListener);
-            resolve(tab);
-        };
+        const createdListener = (tab) => { newTabId = tab.id; chrome.tabs.onCreated.removeListener(createdListener); resolve(tab); };
         chrome.tabs.onCreated.addListener(createdListener);
-
         (async () => {
-            try {
-                await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url });
-            } catch (err) {
-                console.log("Script mati saat batch, reinjecting...");
+            try { await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url }); } 
+            catch (err) {
                 try {
                     await chrome.scripting.executeScript({ target: { tabId: mainTabId }, files: ['formatter.js', 'processor.js', 'content.js'] });
-                    setTimeout(async () => {
-                        try { await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url }); } 
-                        catch (e) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); }
-                    }, 1000);
+                    setTimeout(async () => { try { await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url }); } catch (e) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); } }, 1000);
                 } catch (injectErr) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); }
             }
         })();
-
         setTimeout(() => { if (!newTabId) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); } }, 8000);
     });
 }
@@ -158,8 +101,7 @@ function waitForTabLoad(tabId) {
     return new Promise(resolve => {
         const listener = (tid, changeInfo) => {
             if (tid === tabId && changeInfo.status === 'complete') {
-                chrome.tabs.onUpdated.removeListener(listener);
-                resolve();
+                chrome.tabs.onUpdated.removeListener(listener); resolve();
             }
         };
         chrome.tabs.onUpdated.addListener(listener);
@@ -172,26 +114,16 @@ function waitForDataUpdate(kode) {
         const interval = setInterval(() => {
             attempts++;
             const item = currentData.find(i => i.kode === kode);
-            if ((item && item._hasDetail) || attempts > 20) {
-                clearInterval(interval);
-                resolve();
-            }
+            if ((item && item._hasDetail) || attempts > 20) { clearInterval(interval); resolve(); }
         }, 500);
     });
 }
 
-// FUNGSI INJEKSI
 async function injectAndScrape(tabId) {
     if (!isBatchProcessing) updateStatus("Mengambil data..."); 
-    try {
-        await chrome.scripting.executeScript({
-            target: { tabId: tabId },
-            files: ['formatter.js', 'processor.js', 'content.js']
-        });
-    } catch (err) { console.log("Inject error:", err); }
+    try { await chrome.scripting.executeScript({ target: { tabId: tabId }, files: ['formatter.js', 'processor.js', 'content.js'] }); } catch (err) { console.log("Inject error:", err); }
 }
 
-// RECEIVE MESSAGE
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "data_scraped") {
         if (request.type === 'list' || request.count > 1) {
@@ -210,18 +142,16 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     }
 });
 
-// AUTO SCRAPE LISTENER
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     if (isBatchProcessing) return; 
     if (changeInfo.status === 'complete' && tab.url) {
         const keywords = ['lelang', 'nontender', 'pencatatan', 'swakelola', 'pengumuman', 'jadwal'];
-        if (keywords.some(k => tab.url.toLowerCase().includes(k))) {
-            injectAndScrape(tabId);
-        }
+        if (keywords.some(k => tab.url.toLowerCase().includes(k))) injectAndScrape(tabId);
     }
 });
 
-// RENDER & HELPERS 
+// --- RENDER & HELPERS UI ---
+
 function renderTable(items) {
     const tbody = document.getElementById('tableBody');
     document.getElementById('dataCount').innerText = items.length;
@@ -264,11 +194,23 @@ function renderTable(items) {
         const trDetail = document.createElement('tr');
         trDetail.className = 'detail-row';
         let listHTML = '<div class="list-group">';
+        
         Object.keys(item).filter(k => !k.startsWith('_') && k !== 'link_url').forEach(key => {
             let val = item[key];
             if (val === null || val === undefined || val === "") return;
             let label = key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-            if ((key.includes('hps') || key.includes('nilai') || key.includes('pagu')) && typeof val === 'number') val = formatMoney(val);
+            
+            // --- FORMAT TAMPILAN ---
+            
+            // 1. Format Uang
+            if ((key.includes('hps') || key.includes('nilai') || key.includes('pagu')) && typeof val === 'number') {
+                val = formatMoney(val);
+            }
+            // 2. Format Tanggal ISO (2025-08-13) -> Indo (13 Agustus 2025)
+            if (key === 'tanggal_pembuatan') {
+                val = formatDateDisplay(val);
+            }
+
             listHTML += `<div class="list-item"><span class="label">${label}</span><span class="value">${val}</span></div>`;
         });
         listHTML += '</div>';
@@ -289,8 +231,18 @@ function renderTable(items) {
 
 function saveAndRender(msg) { chrome.storage.local.set({ 'lpse_data': currentData }); renderTable(currentData); updateStatus(msg); document.getElementById('downloadArea').style.display = 'flex'; }
 function updateStatus(msg) { const el = document.getElementById('status'); if(el) el.innerText = msg; }
-function formatMoney(num) { return "Rp " + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
 function highlightRow(kode, color) { const rows = document.querySelectorAll('.main-row'); rows.forEach(row => { if (row.innerText.includes(kode)) { row.style.backgroundColor = color || "#d4edda"; if (!isBatchProcessing) setTimeout(() => { row.style.backgroundColor = ""; }, 1500); } }); }
+
+function formatMoney(num) { return "Rp " + num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, "."); }
+
+// --- FORMAT TANGGAL BALIK (ISO -> INDO) UNTUK TAMPILAN SIDE PANEL ---
+function formatDateDisplay(isoDate) {
+    if (!isoDate || !isoDate.includes('-')) return isoDate;
+    const [y, m, d] = isoDate.split('-');
+    const months = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
+    // parseInt untuk menghilangkan angka 0 di depan (08 -> 8) jika diinginkan, atau biarkan string
+    return `${d} ${months[parseInt(m)]} ${y}`;
+}
 
 document.getElementById('btnDownloadCsv').addEventListener('click', () => downloadFile(LpseRepository.toCSV(currentData), 'csv'));
 document.getElementById('btnDownloadJson').addEventListener('click', () => downloadFile(LpseRepository.toJSON(currentData), 'json'));
