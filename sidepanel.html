@@ -152,6 +152,57 @@
     .paket-link:hover { text-decoration: underline; }
 
     .nil-null { color: #adb5bd; font-style: italic; }
+
+    /* --- DONATION AREA --- */
+    .donation-wrapper {
+        margin-top: 25px;
+        padding-top: 15px;
+        border-top: 1px solid #e9ecef;
+        text-align: center;
+    }
+
+    .donation-text {
+        font-size: 10px;
+        color: #868e96;
+        margin-bottom: 10px;
+        font-weight: 500;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .donation-grid {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .btn-donate {
+        flex: 1;
+        display: inline-block;
+        padding: 6px 0;
+        border-radius: 6px;
+        font-size: 10px;
+        font-weight: 700;
+        text-decoration: none;
+        color: white;
+        transition: transform 0.1s, opacity 0.2s;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .btn-donate:hover {
+        transform: translateY(-1px); /* Efek naik sedikit saat hover */
+        opacity: 0.9;
+        box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+    }
+
+    .btn-donate:active {
+        transform: translateY(0);
+    }
+
+    /* Warna Brand */
+    .saweria { background-color: #faae2b; color: #343a40; } /* Kuning Saweria */
+    .trakteer { background-color: #be1e2d; } /* Merah Trakteer */
+    .sociabuzz { background-color: #1a9e8e; } /* Hijau SociaBuzz */
   </style>
 </head>
 <body>
@@ -184,6 +235,26 @@
             </tbody>
       </table>
   </div>
+
+    <div class="donation-wrapper">
+        <p class="donation-text">Dukung Pengembangan & Maintenance ❤️</p>
+        
+        <div class="donation-grid">
+            <a href="https://saweria.co/juliansukrisna" target="_blank" class="btn-donate saweria">
+                Saweria
+            </a>
+            <a href="https://teer.id/juliansukrisna" target="_blank" class="btn-donate trakteer">
+                Trakteer
+            </a>
+            <a href="https://sociabuzz.com/juliansukrisna/tribe" target="_blank" class="btn-donate sociabuzz">
+                SociaBuzz
+            </a>
+        </div>
+    </div>
+
+  <script src="repository.js"></script>
+
+  <script src="repository.js"></script>
 
   <script src="repository.js"></script>
   <script src="formatter.js"></script>
