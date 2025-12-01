@@ -1,8 +1,3 @@
-// ... (Bagian atas MASTER_DATA dll TETAP SAMA) ...
-
-// --- SAYA HANYA MENAMPILKAN BAGIAN DETAILPARSER YANG BERUBAH ---
-// Silakan copy full code di bawah ini untuk processor.js
-
 // --- MASTER DATA ---
 if (typeof MASTER_DATA === 'undefined') {
     var MASTER_DATA = {
@@ -130,9 +125,14 @@ if (typeof DetailParser === 'undefined') {
                             else {
                                 value = nextCell.innerText.trim();
                                 
-                                // FORMAT TANGGAL ISO (NEW!)
+                                // FORMAT TANGGAL ISO
                                 if (key === 'tanggal_pembuatan') {
                                     value = DataFormatter.formatDateISO(value);
+                                }
+                                // FORMAT PESERTA (BARU!) -> Convert to Integer
+                                else if (key === 'peserta_tender') {
+                                    // "63 peserta" -> 63
+                                    value = parseInt(value.replace(/\D/g, '')) || 0;
                                 }
                                 // Format Uang
                                 else if (key.includes('hps') || key.includes('pagu') || key.includes('nilai')) {
@@ -188,10 +188,6 @@ if (typeof DetailParser === 'undefined') {
 }
 
 // --- INTERFACES (TETAP SAMA) ---
-// (Bagian bawah Interface Lelang, NonTender dll tidak berubah, 
-//  karena mereka memakai NamaPaketParser yang belum kita ubah tanggalnya, 
-//  tapi DetailParser sudah dihandle di atas)
-
 if (typeof LelangInterface === 'undefined') {
     window.LelangInterface = class LelangInterface {
         static getRawData(rowElement) {

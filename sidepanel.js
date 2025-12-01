@@ -210,6 +210,10 @@ function renderTable(items) {
             if (key === 'tanggal_pembuatan') {
                 val = formatDateDisplay(val);
             }
+            // 3. Format Peserta (BARU!) -> Tambah " peserta" di belakang
+            if (key === 'peserta_tender') {
+                val = val + " peserta";
+            }
 
             listHTML += `<div class="list-item"><span class="label">${label}</span><span class="value">${val}</span></div>`;
         });
@@ -240,7 +244,6 @@ function formatDateDisplay(isoDate) {
     if (!isoDate || !isoDate.includes('-')) return isoDate;
     const [y, m, d] = isoDate.split('-');
     const months = ["", "Januari", "Februari", "Maret", "April", "Mei", "Juni", "Juli", "Agustus", "September", "Oktober", "November", "Desember"];
-    // parseInt untuk menghilangkan angka 0 di depan (08 -> 8) jika diinginkan, atau biarkan string
     return `${d} ${months[parseInt(m)]} ${y}`;
 }
 
