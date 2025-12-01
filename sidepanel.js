@@ -1,6 +1,10 @@
 let currentData = [];
 let isBatchProcessing = false;
 
+// --- KONFIGURASI JEDA (HUMANIZE) ---
+const DELAY_MIN = 3000; // Minimal 3 detik
+const DELAY_MAX = 7000; // Maksimal 7 detik
+
 // 1. INIT LOAD
 chrome.storage.local.get(['lpse_data'], (result) => {
     if (result.lpse_data) {
@@ -18,7 +22,7 @@ document.getElementById('btnScrape').addEventListener('click', async () => {
     await injectAndScrape(tab.id);
 });
 
-// 3. BATCH SCRAPE BUTTON (LOGIKA BARU: NATIVE CLICK)
+// 3. BATCH SCRAPE BUTTON (LOGIKA BARU: JEDA ACAK)
 document.getElementById('btnBatchScrape').addEventListener('click', async () => {
     if (isBatchProcessing) {
         isBatchProcessing = false;
@@ -32,14 +36,11 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
         return;
     }
 
-    if (!confirm(`Akan memproses ${targets.length} paket menggunakan Klik Native (Aman). Lanjutkan?`)) return;
+    if (!confirm(`Akan memproses ${targets.length} paket. Estimasi waktu: ~${Math.round((targets.length * ((DELAY_MIN+DELAY_MAX)/2))/1000)} detik. Lanjutkan?`)) return;
 
-    // Ambil ID Tab Daftar Utama (Tempat kita melakukan klik)
+    // Ambil ID Tab Daftar Utama
     const [mainTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!mainTab) {
-        updateStatus("Error: Tidak dapat menemukan tab utama.");
-        return;
-    }
+    if (!mainTab) { updateStatus("Error: Tidak dapat menemukan tab utama."); return; }
     const mainTabId = mainTab.id;
 
     isBatchProcessing = true;
@@ -54,11 +55,10 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
         highlightRow(item.kode, '#fff3cd');
 
         try {
-            // LANGKAH 1: Pastikan kita fokus di Tab Utama dulu
+            // 1. Fokus Tab Utama
             await chrome.tabs.update(mainTabId, { active: true });
 
-            // LANGKAH 2: Klik Native via Content Script & Tunggu Tab Baru Muncul
-            // Ini menggantikan chrome.tabs.create
+            // 2. Klik Native & Tunggu Tab Baru
             const newTab = await triggerClickAndWaitForTab(mainTabId, item.link_url);
             
             if (!newTab) {
@@ -66,24 +66,30 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
                 continue;
             }
 
-            // LANGKAH 3: Tunggu Loading Selesai di Tab Baru
+            // 3. Tunggu Loading
             await waitForTabLoad(newTab.id);
 
-            // LANGKAH 4: Inject & Scrape di Tab Baru
+            // --- JEDA KECIL SEBELUM SCRAPE (Simulasi user membaca) ---
+            // Acak antara 500ms - 1500ms
+            await randomDelay(500, 1500);
+
+            // 4. Inject & Scrape
             await injectAndScrape(newTab.id);
 
-            // LANGKAH 5: Tunggu Data Masuk (Polling)
+            // 5. Tunggu Data Masuk
             await waitForDataUpdate(item.kode);
 
-            // LANGKAH 6: Tutup Tab Baru
+            // 6. Tutup Tab
             await chrome.tabs.remove(newTab.id);
 
-            // Jeda 2 Detik (Safety)
-            await new Promise(r => setTimeout(r, 2000));
+            // --- JEDA HUMANIS ANTAR PAKET (UTAMA) ---
+            // Ini agar tidak dianggap spamming
+            const delay = getRandomInt(DELAY_MIN, DELAY_MAX);
+            updateStatus(`Istirahat ${Math.round(delay/100)/10} detik...`); // Tampilkan status
+            await new Promise(r => setTimeout(r, delay));
 
         } catch (err) {
             console.error("Batch Error:", err);
-            // Lanjut ke item berikutnya
         }
     }
 
@@ -94,12 +100,22 @@ document.getElementById('btnBatchScrape').addEventListener('click', async () => 
 });
 
 
-// --- HELPER BARU: KLIK NATIVE DAN TANGKAP TAB BARU ---
+// --- HELPER BARU: RANDOM DELAY ---
+
+function getRandomInt(min, max) {
+    return Math.floor(Math.random() * (max - min + 1)) + min;
+}
+
+function randomDelay(min, max) {
+    const ms = getRandomInt(min, max);
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// --- HELPER LAINNYA (SAMA SEPERTI SEBELUMNYA) ---
+
 function triggerClickAndWaitForTab(mainTabId, url) {
     return new Promise((resolve) => {
         let newTabId = null;
-
-        // 1. Pasang Listener: Dengar jika ada tab baru dibuat
         const createdListener = (tab) => {
             newTabId = tab.id;
             chrome.tabs.onCreated.removeListener(createdListener);
@@ -107,43 +123,22 @@ function triggerClickAndWaitForTab(mainTabId, url) {
         };
         chrome.tabs.onCreated.addListener(createdListener);
 
-        // 2. Kirim Perintah Klik (dengan Retry Logic)
         (async () => {
             try {
                 await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url });
             } catch (err) {
                 console.log("Script mati saat batch, reinjecting...");
-                
-                // Jika script mati, listener tab mungkin tidak ter-trigger karena klik gagal.
-                // Kita harus inject ulang -> tunggu -> klik lagi.
                 try {
-                    await chrome.scripting.executeScript({
-                        target: { tabId: mainTabId },
-                        files: ['formatter.js', 'processor.js', 'content.js']
-                    });
-                    
+                    await chrome.scripting.executeScript({ target: { tabId: mainTabId }, files: ['formatter.js', 'processor.js', 'content.js'] });
                     setTimeout(async () => {
-                        try {
-                            await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url });
-                        } catch (e) {
-                            chrome.tabs.onCreated.removeListener(createdListener);
-                            resolve(null); // Gagal total
-                        }
+                        try { await chrome.tabs.sendMessage(mainTabId, { action: "simulate_click", url: url }); } 
+                        catch (e) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); }
                     }, 1000);
-                } catch (injectErr) {
-                    chrome.tabs.onCreated.removeListener(createdListener);
-                    resolve(null);
-                }
+                } catch (injectErr) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); }
             }
         })();
 
-        // 3. Timeout Safety (Jika dalam 5 detik tidak ada tab baru, batalkan)
-        setTimeout(() => {
-            if (!newTabId) {
-                chrome.tabs.onCreated.removeListener(createdListener);
-                resolve(null);
-            }
-        }, 8000);
+        setTimeout(() => { if (!newTabId) { chrome.tabs.onCreated.removeListener(createdListener); resolve(null); } }, 8000);
     });
 }
 
@@ -165,7 +160,7 @@ function waitForDataUpdate(kode) {
         const interval = setInterval(() => {
             attempts++;
             const item = currentData.find(i => i.kode === kode);
-            if ((item && item._hasDetail) || attempts > 20) { // Timeout ~10 detik
+            if ((item && item._hasDetail) || attempts > 20) {
                 clearInterval(interval);
                 resolve();
             }
@@ -175,7 +170,9 @@ function waitForDataUpdate(kode) {
 
 // FUNGSI INJEKSI
 async function injectAndScrape(tabId) {
-    updateStatus("Mengambil data...");
+    // Jangan update status "Sedang mengambil..." jika sedang batch, agar tidak menimpa status "Istirahat"
+    if (!isBatchProcessing) updateStatus("Mengambil data..."); 
+    
     try {
         await chrome.scripting.executeScript({
             target: { tabId: tabId },
@@ -205,7 +202,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
 
 // AUTO SCRAPE LISTENER
 chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
-    if (isBatchProcessing) return; // Skip saat batch manual berjalan
+    if (isBatchProcessing) return; 
     if (changeInfo.status === 'complete' && tab.url) {
         const keywords = ['lelang', 'nontender', 'pencatatan', 'swakelola', 'pengumuman', 'jadwal'];
         if (keywords.some(k => tab.url.toLowerCase().includes(k))) {
@@ -214,7 +211,7 @@ chrome.tabs.onUpdated.addListener((tabId, changeInfo, tab) => {
     }
 });
 
-// RENDER & HELPERS (TETAP SAMA SEPERTI KODE SEBELUMNYA)
+// RENDER & HELPERS 
 function renderTable(items) {
     const tbody = document.getElementById('tableBody');
     document.getElementById('dataCount').innerText = items.length;
@@ -238,7 +235,6 @@ function renderTable(items) {
             <td style="text-align:right; font-weight:600;">${displayMoney}</td>
         `;
 
-        // MANIPULASI KLIK MANUAL
         const nameDiv = trMain.cells[1].querySelector('div');
         if (item.link_url) {
             nameDiv.innerHTML = `<a href="#" class="paket-link">${item.nama_paket}</a>`;
