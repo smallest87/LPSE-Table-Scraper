@@ -1,8 +1,5 @@
 if (typeof DataFormatter === 'undefined') {
     window.DataFormatter = class DataFormatter {
-        /**
-         * Mengubah format mata uang (HPS/Pagu) menjadi Angka Murni.
-         */
         static parseHPS(value) {
             if (!value) return 0;
     
@@ -17,14 +14,11 @@ if (typeof DataFormatter === 'undefined') {
                 multiplier = 1000000;
             }
     
-            // Hapus karakter non-angka/koma/titik
             let cleanNum = str.replace(/[^0-9,.]/g, "");
     
             if (multiplier > 1) {
-                // Singkatan (2,6 M) -> Koma adalah desimal
                 cleanNum = cleanNum.replace(/\./g, "").replace(",", ".");
             } else {
-                // Lengkap (Rp 1.000,00) -> Titik hapus, Koma jadi titik
                 cleanNum = cleanNum.replace(/\./g, "").replace(",", ".");
             }
     
@@ -32,12 +26,12 @@ if (typeof DataFormatter === 'undefined') {
         }
 
         /**
-         * LOGIKA: 
+         * UPDATE LOGIKA:
          * - Jika ada angka -> Return Integer
-         * - Jika teks huruf saja -> Return null
+         * - Jika teks (misal: "Belum dibuat") -> Return 0 (Agar aman untuk statistik)
          */
         static parseNilaiKontrak(value) {
-            if (!value) return null;
+            if (!value) return 0;
 
             // Cek apakah ada digit (0-9) dalam string
             const hasDigit = /\d/.test(value);
@@ -45,7 +39,7 @@ if (typeof DataFormatter === 'undefined') {
             if (hasDigit) {
                 return this.parseHPS(value);
             } else {
-                return null; // Return NULL agar JSON bersih
+                return 0; // Return 0, bukan null
             }
         }
     }

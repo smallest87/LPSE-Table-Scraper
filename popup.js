@@ -92,12 +92,16 @@ function renderTable(items) {
             
             let displayValue = item[key];
             
-            // HANDLING NULL UNTUK TAMPILAN TABEL
-            if (key === 'nilai_kontrak' && displayValue === null) {
+            // LOGIKA TAMPILAN:
+            // Jika kolom adalah 'nilai_kontrak' dan isinya 0,
+            // Kita anggap itu sebagai "Belum Dibuat" secara visual.
+            if (key === 'nilai_kontrak' && displayValue === 0) {
                 displayValue = "Nilai Kontrak belum dibuat";
                 td.style.color = "#999"; 
                 td.style.fontStyle = "italic";
-            } else if (displayValue === null) {
+            } 
+            // Handle null/undefined umum
+            else if (displayValue === null || displayValue === undefined) {
                 displayValue = "-";
             }
 
