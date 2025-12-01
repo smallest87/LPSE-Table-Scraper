@@ -46,7 +46,6 @@ const MASTER_DATA = {
     ],
 
     // Daftar Metode Pemilihan / Sistem Kontrak
-    // Masukkan variasi "Ulang" di sini juga jika ingin ditangkap spesifik
     METODE_DAN_SISTEM: [
         "Tender",
         "Tender Ulang",
@@ -70,20 +69,29 @@ const MASTER_DATA = {
 
 /**
  * Helper untuk mengecek apakah sebuah teks mengandung salah satu item dari list
- * @param {string} text - Teks kandidat dari HTML (misal: "TA 2025")
+ * PERBAIKAN: Menggunakan logika "Longest Match First".
+ * Mencari semua yang cocok, lalu mengambil yang string-nya paling panjang.
+ * Ini mencegah "Tender" terpilih padahal teks aslinya "Tender Ulang".
+ * * @param {string} text - Teks kandidat dari HTML
  * @param {Array} list - Array Master Data
- * @returns {string|null} - Item yang cocok, atau null
+ * @returns {string|null} - Item yang cocok paling spesifik, atau null
  */
 function findMatch(text, list) {
     if (!text) return null;
-    // Normalisasi teks input ke lowercase agar pencocokan tidak case-sensitive
     const lowerText = text.toLowerCase();
     
-    // Cari item di list yang muncul di dalam teks input
-    // Kita gunakan .find() untuk mengambil item list pertama yang cocok
-    const match = list.find(item => lowerText.includes(item.toLowerCase()));
+    // 1. Cari SEMUA item di list yang muncul di dalam teks input
+    const matches = list.filter(item => lowerText.includes(item.toLowerCase()));
     
-    return match || null; // Kembalikan item asli dari list (format casing asli)
+    // 2. Jika tidak ada yang cocok, kembalikan null
+    if (matches.length === 0) return null;
+
+    // 3. Urutkan hasil pencocokan berdasarkan panjang string (DESCENDING / Terpanjang dulu)
+    // Contoh: ["Tender", "Tender Ulang"] -> menjadi ["Tender Ulang", "Tender"]
+    matches.sort((a, b) => b.length - a.length);
+
+    // 4. Kembalikan item terpanjang (paling spesifik)
+    return matches[0]; 
 }
 
 class PackageParser {
@@ -95,7 +103,7 @@ class PackageParser {
             versi_spse: "",
             jenis_pekerjaan: "",
             tahun_anggaran: "",
-            metode_pengadaan: [], // Berupa Array karena bisa ada banyak metode (Tender + Pascakualifikasi)
+            metode_pengadaan: [], // Berupa Array karena bisa ada banyak metode
             nilai_kontrak: "0",
             keterangan_lain: ""
         };
