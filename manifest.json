@@ -1,34 +1,23 @@
 {
   "manifest_version": 3,
   "name": "LPSE Pro Scraper",
-  "version": "2.1",
-  "description": "Scraper LPSE dengan fitur Side Panel dan Detail Merging",
+  "version": "2.2",
+  "description": "Scraper LPSE dengan Auto-Detail Scraping",
   "permissions": [
     "activeTab",
     "scripting",
     "sidePanel",
-    "storage"
+    "storage",
+    "tabs" 
   ],
   "host_permissions": [
     "<all_urls>"
   ],
   "action": {
     "default_title": "Buka LPSE Scraper",
-    "default_icon": {
-      "16": "icon.png",
-      "48": "icon.png",
-      "128": "icon.png"
-    }
+    "default_icon": { "16": "icon.png", "48": "icon.png", "128": "icon.png" }
   },
-  "background": {
-    "service_worker": "background.js"
-  },
-  "side_panel": {
-    "default_path": "sidepanel.html"
-  },
-  "icons": {
-    "16": "icon.png",
-    "48": "icon.png",
-    "128": "icon.png"
-  }
+  "background": { "service_worker": "background.js" },
+  "side_panel": { "default_path": "sidepanel.html" },
+  "icons": { "16": "icon.png", "48": "icon.png", "128": "icon.png" }
 }

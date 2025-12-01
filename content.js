@@ -57,4 +57,10 @@
             }
         });
     }
+
+// --- SKENARIO C: TIDAK DIKENALI ---
+    else {
+        // alert("[LPSE Scraper] Halaman tidak dikenali..."); // MATIKAN ALERT INI
+        console.log("[LPSE Scraper] Struktur halaman tidak cocok dengan pattern List atau Detail.");
+    }
 })();
