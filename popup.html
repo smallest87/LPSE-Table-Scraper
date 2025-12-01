@@ -2,31 +2,46 @@
 <html>
 <head>
   <style>
-    body { width: 600px; padding: 10px; font-family: sans-serif; } /* Perlebar body */
-    button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; margin-bottom: 10px; }
-    button:hover { background: #0056b3; }
+    body { width: 700px; padding: 15px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
     
-    /* Styling Tabel Sederhana */
-    #resultTable { width: 100%; border-collapse: collapse; font-size: 10px; }
-    #resultTable th, #resultTable td { border: 1px solid #ddd; padding: 5px; text-align: left; }
-    #resultTable th { background-color: #f2f2f2; }
+    /* Tombol Utama */
+    .btn-main { width: 100%; padding: 10px; background: #007bff; color: white; border: none; cursor: pointer; font-weight: bold; border-radius: 4px; margin-bottom: 15px; }
+    .btn-main:hover { background: #0056b3; }
+
+    /* Area Download (Awalnya Hidden) */
+    #downloadArea { display: none; gap: 10px; margin-bottom: 15px; }
     
-    .status-bar { margin-bottom: 10px; font-size: 12px; font-weight: bold; }
+    .btn-action { flex: 1; padding: 8px; border: none; cursor: pointer; font-weight: bold; color: white; border-radius: 4px; font-size: 12px; }
+    .btn-csv { background-color: #28a745; } 
+    .btn-csv:hover { background-color: #218838; }
+    .btn-json { background-color: #fd7e14; } 
+    .btn-json:hover { background-color: #ca6510; }
+
+    /* Tabel & Status */
+    .status-bar { margin-bottom: 10px; font-size: 13px; font-weight: bold; color: #333; }
+    #resultTable { width: 100%; border-collapse: collapse; font-size: 11px; }
+    #resultTable th, #resultTable td { border: 1px solid #ddd; padding: 6px; text-align: left; }
+    #resultTable th { background-color: #f8f9fa; position: sticky; top: 0; }
   </style>
 </head>
 <body>
-  <h3>LPSE Scraper</h3>
-  <button id="btnScrape">SCRAPE & TAMPILKAN TABEL</button>
-  <div id="status" class="status-bar"></div>
+  <h3 style="margin-top:0;">LPSE Scraper</h3>
+  
+  <button id="btnScrape" class="btn-main">AMBIL DATA TABEL</button>
+  
+  <div id="status" class="status-bar">Siap melakukan scraping...</div>
+
+  <div id="downloadArea">
+      <button id="btnDownloadCsv" class="btn-action btn-csv">UNDUH CSV (;)</button>
+      <button id="btnDownloadJson" class="btn-action btn-json">UNDUH JSON</button>
+  </div>
   
   <table id="resultTable">
-    <thead>
-        <tr id="tableHeader"></tr>
-    </thead>
-    <tbody id="tableBody">
-    </tbody>
+    <thead><tr id="tableHeader"></tr></thead>
+    <tbody id="tableBody"></tbody>
   </table>
 
+  <script src="repository.js"></script>
   <script src="popup.js"></script>
 </body>
 </html>
