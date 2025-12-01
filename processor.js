@@ -6,6 +6,7 @@
 const MASTER_DATA = {
     // Daftar Versi SPSE yang valid
     VERSI_SPSE: [
+        "spse 3", 
         "spse 4.5", 
         "spse 4.4", 
         "spse 4.3", 
@@ -20,7 +21,16 @@ const MASTER_DATA = {
         "TA 2023", 
         "TA 2022",
         "TA 2021",
-        "TA 2020"
+        "TA 2020",
+        "TA 2019",
+        "TA 2018",
+        "TA 2017",
+        "TA 2016",
+        "TA 2015",
+        "TA 2014",
+        "TA 2013",
+        "TA 2012",
+        "TA 2011"
     ],
 
     // Daftar Jenis Pengadaan
